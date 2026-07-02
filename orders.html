@@ -62,6 +62,59 @@
         .info-message{background:#fff7e5;border-left:5px solid #f5b042;padding:12px 18px;margin-bottom:20px;border-radius:16px;font-size:12px;color:#8a6e2f;display:flex;align-items:center;gap:12px}
         .footer{text-align:center;padding:20px 16px 8px;color:#95adcc;font-size:11px}
         @media (max-width:640px){body{padding:12px}.toolbar{flex-direction:column;align-items:stretch}.date-group{justify-content:space-between}}
+        /* ============================================================
+   📱 移动端适配
+   ============================================================ */
+
+/* 平板设备 */
+@media (max-width: 1024px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* 手机设备 */
+@media (max-width: 768px) {
+    body { padding: 10px; }
+    
+    .header { padding: 14px 16px; border-radius: 12px; }
+    .header h1 { font-size: 1.1rem; }
+    .header p { font-size: 0.7rem; }
+    .nav-links { gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15); }
+    .nav-links a { font-size: 0.65rem; padding: 3px 8px; background: rgba(255,255,255,0.08); border-radius: 12px; white-space: nowrap; }
+    .nav-links a.active { background: rgba(255,255,255,0.2); }
+    
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .stat-card { padding: 10px 8px; border-radius: 12px; }
+    .stat-number { font-size: 20px; }
+    .stat-label { font-size: 10px; }
+    .stat-icon { font-size: 22px; }
+    
+    .info-message { font-size: 11px; padding: 10px 14px; border-radius: 12px; flex-wrap: wrap; }
+    .info-message span { flex: 1; }
+    
+    .toolbar { padding: 12px 14px; flex-direction: column; align-items: stretch; gap: 8px; border-radius: 12px; }
+    .date-group { flex-wrap: wrap; gap: 6px; }
+    .date-group input { flex: 1; min-width: 80px; padding: 8px 10px; font-size: 12px; border-radius: 10px; }
+    .date-group .btn { flex: 1; min-width: 60px; justify-content: center; }
+    .search-box input { width: 100%; padding: 8px 12px; font-size: 12px; border-radius: 10px; }
+    .toolbar .btn-success { justify-content: center; padding: 8px; }
+    
+    .table-wrapper { border-radius: 12px; }
+    .table-wrapper > div { max-height: 50vh; }
+    table { font-size: 10px; min-width: 420px; }
+    th, td { padding: 5px 6px; }
+    th { font-size: 9px; }
+    td { font-size: 10px; }
+    td:first-child { font-size: 9px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    td:nth-child(2) { max-width: 70px; }
+    td:nth-child(3) { max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .category-badge { font-size: 8px; padding: 2px 5px; }
+    .status-badge { font-size: 8px; padding: 2px 6px; }
+    
+    .pagination { padding: 8px; gap: 3px; }
+    .page-btn { padding: 4px 8px; font-size: 10px; border-radius: 6px; }
+    
+    .footer { font-size: 10px; padding: 12px; }
+}
     </style>
 </head>
 <body>
