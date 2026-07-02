@@ -58,6 +58,62 @@
         @keyframes fadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0;visibility:hidden}}
         .footer{text-align:center;padding:20px;color:#94a3b8;font-size:12px}
         @media (max-width:768px){body{padding:16px}.form-grid{grid-template-columns:1fr}.calc-grid{grid-template-columns:1fr}.btn-group{flex-direction:column}.btn-group button{width:100%;justify-content:center}}
+   /* ============================================================
+   📱 移动端适配
+   ============================================================ */
+
+/* 平板设备 */
+@media (max-width: 1024px) {
+    .shipping-section { grid-template-columns: 1fr; }
+    .calc-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* 手机设备 */
+@media (max-width: 768px) {
+    body { padding: 10px; }
+    
+    .header { padding: 14px 16px; border-radius: 12px; }
+    .header h1 { font-size: 1.1rem; }
+    .header p { font-size: 0.7rem; }
+    .nav-links { gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15); }
+    .nav-links a { font-size: 0.65rem; padding: 3px 8px; background: rgba(255,255,255,0.08); border-radius: 12px; white-space: nowrap; }
+    .nav-links a.active { background: rgba(255,255,255,0.2); }
+    
+    .order-form { padding: 16px; border-radius: 12px; }
+    .form-title { font-size: 16px; padding-left: 12px; }
+    
+    .form-grid { grid-template-columns: 1fr; gap: 10px; }
+    .form-group label { font-size: 11px; }
+    .form-group input, .form-group select { padding: 10px 12px; font-size: 13px; border-radius: 10px; }
+    
+    .delivery-method { padding: 12px 16px; border-radius: 12px; flex-wrap: wrap; font-size: 13px; }
+    .delivery-method label { font-size: 12px; margin-right: 10px; }
+    .method-badge { font-size: 10px; padding: 1px 8px; }
+    
+    .shipping-section { grid-template-columns: 1fr; gap: 12px; }
+    .shipping-card { padding: 14px 16px; border-radius: 12px; }
+    .shipping-card h4 { font-size: 14px; }
+    .shipping-grid { grid-template-columns: 1fr; gap: 10px; }
+    .shipping-item { padding: 10px 12px; border-radius: 10px; }
+    .shipping-item label { font-size: 11px; }
+    .shipping-item select { font-size: 12px; padding: 6px 10px; }
+    .shipping-item .value { font-size: 18px; }
+    
+    .calc-result { padding: 16px; border-radius: 12px; }
+    .calc-result h4 { font-size: 16px; }
+    .calc-grid { grid-template-columns: 1fr; gap: 8px; }
+    .calc-item { padding: 10px 14px; border-radius: 10px; }
+    .calc-item .label { font-size: 12px; }
+    .calc-item .value { font-size: 16px; }
+    .calc-item.highlight .value { font-size: 20px; }
+    
+    .formula-note { font-size: 11px; padding: 10px 14px; border-radius: 10px; flex-wrap: wrap; }
+    
+    .btn-group { flex-direction: column; gap: 8px; margin-top: 16px; }
+    .btn-group .btn { justify-content: center; padding: 12px; border-radius: 10px; font-size: 13px; }
+    
+    .footer { font-size: 10px; padding: 12px; }
+}
     </style>
 </head>
 <body>
