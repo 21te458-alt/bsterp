@@ -344,8 +344,8 @@ def get_all_inventory():
     all_data = []
     done_count = 0
     
-    # 使用线程池并发获取
-    max_workers = min(100, len(products) or 1)
+    # 使用线程池并发获取（并发数不宜过高，避免触发楽天API限流导致大量重试、拖长总耗时）
+    max_workers = min(30, len(products) or 1)
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(get_single_stock, p['manageNumber']) for p in products]
         
