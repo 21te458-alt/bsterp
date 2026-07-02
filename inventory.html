@@ -19,6 +19,15 @@
         .nav-links a{color:white;text-decoration:none;opacity:0.65;font-size:0.82rem;transition:opacity 0.2s}
         .nav-links a:hover,.nav-links a.active{opacity:1}
 
+        /* 🆕 加载进度条 */
+        .loading-bar-container{background:white;border-radius:16px;padding:16px 24px;border:1px solid #eef2ff;display:none;align-items:center;gap:16px;flex-wrap:wrap}
+        .loading-bar-container.active{display:flex}
+        .loading-bar-label{font-size:13px;font-weight:600;color:#475569;white-space:nowrap}
+        .loading-bar-track{flex:1;min-width:150px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden}
+        .loading-bar-fill{height:100%;background:linear-gradient(90deg,#bf0000,#ef4444);border-radius:4px;width:0%;transition:width 0.5s ease}
+        .loading-bar-text{font-size:13px;font-weight:700;color:#bf0000;white-space:nowrap}
+        .btn-outline{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;padding:4px 12px;border-radius:8px;cursor:pointer;font-size:11px}
+
         /* KPI */
         .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
         @media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
@@ -26,11 +35,11 @@
         .stat-title{font-size:12px;color:#64748b;margin-bottom:6px;display:flex;align-items:center;gap:5px}
         .stat-value{font-size:26px;font-weight:800;color:#1e293b}
 
-        /* Main layout: left table + right outstock panel */
+        /* Main layout */
         .main-layout{display:grid;grid-template-columns:1fr 420px;gap:16px;align-items:start}
         @media(max-width:1100px){.main-layout{grid-template-columns:1fr}}
 
-        /* Inventory table panel */
+        /* Panel */
         .panel{background:white;border-radius:16px;border:1px solid #eef2ff;overflow:hidden}
         .panel-header{padding:14px 18px;border-bottom:1px solid #eef2ff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
         .panel-title{font-size:15px;font-weight:700;color:#1e293b;display:flex;align-items:center;gap:8px}
@@ -42,12 +51,14 @@
         .btn-primary{background:#bf0000;color:white}
         .btn-primary:hover{background:#8b0000}
 
-        /* Resizable table area */
+        /* Table */
         .table-area{overflow:auto;resize:vertical;min-height:200px;max-height:80vh;height:420px}
         table{width:100%;border-collapse:collapse;min-width:600px}
         th{background:#111827;color:white;padding:10px 12px;text-align:left;font-size:11px;font-weight:600;position:sticky;top:0;z-index:1;white-space:nowrap}
         td{padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:middle}
         tr:hover td{background:#f8fafc}
+
+        /* Badges */
         .category-badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap}
         .category-preorder{background:#8b5cf6;color:white}
         .category-instock{background:#3b82f6;color:white}
@@ -62,10 +73,11 @@
         .stock-high{background:#dcfce7;color:#166534}
         .stock-low{background:#fed7aa;color:#9a3412}
         .stock-zero{background:#fee2e2;color:#b91c1c}
+        .stock-loading{background:#fef3c7;color:#92400e}
         .action-btn{padding:4px 10px;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;background:#ef4444;color:white}
         .action-btn:hover{background:#dc2626}
+        .action-btn:disabled{opacity:0.5;cursor:not-allowed}
 
-        /* Pagination */
         .pagination{display:flex;justify-content:center;gap:4px;padding:10px;border-top:1px solid #eef2ff;flex-wrap:wrap}
         .page-btn{padding:5px 10px;border:1px solid #e2e8f0;background:white;cursor:pointer;border-radius:7px;font-size:12px}
         .page-btn:hover{background:#f1f5f9;border-color:#bf0000}
@@ -76,38 +88,26 @@
         .outstock-panel{background:white;border-radius:16px;border:1px solid #eef2ff;overflow:hidden;display:flex;flex-direction:column}
         .outstock-header{padding:14px 18px;border-bottom:1px solid #eef2ff}
         .outstock-title{font-size:15px;font-weight:700;color:#1e293b;display:flex;align-items:center;gap:8px;margin-bottom:10px}
-
-        /* Tabs */
         .tabs{display:flex;gap:0;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden}
         .tab{flex:1;padding:7px 4px;border:none;background:#f8fafc;cursor:pointer;font-size:11px;font-weight:600;color:#64748b;transition:all 0.2s;text-align:center}
         .tab.active{background:#bf0000;color:white}
         .tab:hover:not(.active){background:#f1f5f9}
-
-        /* Outstock summary bar */
         .outstock-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 18px;border-bottom:1px solid #eef2ff;background:#fafafa}
         .summary-item{text-align:center}
         .summary-label{font-size:10px;color:#64748b;margin-bottom:2px}
         .summary-value{font-size:16px;font-weight:800;color:#1e293b}
-
-        /* Resizable outstock list */
         .outstock-body{overflow:auto;resize:vertical;min-height:150px;max-height:70vh;height:360px}
-
-        /* Detail list */
         .record-item{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 18px;border-bottom:1px solid #f1f5f9;gap:8px}
         .record-item:hover{background:#fafafa}
         .record-name{font-size:12px;font-weight:600;color:#1e293b;line-height:1.4;margin-bottom:3px}
         .record-meta{font-size:10px;color:#94a3b8;display:flex;gap:8px;flex-wrap:wrap}
         .record-qty{font-size:14px;font-weight:700;color:#ef4444;white-space:nowrap}
-
-        /* Product summary list */
         .prod-item{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;border-bottom:1px solid #f1f5f9;gap:8px}
         .prod-item:hover{background:#fafafa}
         .prod-name{font-size:12px;font-weight:600;color:#1e293b;line-height:1.4;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .prod-stats{display:flex;gap:12px;align-items:center;white-space:nowrap}
         .prod-count{font-size:13px;font-weight:700;color:#ef4444}
         .prod-orders{font-size:10px;color:#94a3b8}
-
-        /* Day summary list */
         .day-item{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;border-bottom:1px solid #f1f5f9}
         .day-item:hover{background:#fafafa}
         .day-date{font-size:13px;font-weight:600;color:#1e293b}
@@ -116,12 +116,9 @@
         .day-stats{display:flex;gap:10px;align-items:center;white-space:nowrap}
         .day-qty{font-size:13px;font-weight:700;color:#ef4444}
         .day-orders{font-size:10px;color:#94a3b8}
-
-        /* Loading */
         .loading{text-align:center;padding:40px;color:#64748b}
         .spinner{width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#bf0000;border-radius:50%;animation:spin 0.6s linear infinite;margin:0 auto 10px}
         @keyframes spin{to{transform:rotate(360deg)}}
-
         .empty{text-align:center;padding:40px 20px;color:#94a3b8;font-size:13px}
         .footer{text-align:center;padding:12px;color:#94a3b8;font-size:11px}
         .resize-hint{text-align:right;font-size:10px;color:#cbd5e1;padding:4px 10px;border-top:1px solid #f1f5f9;cursor:ns-resize;user-select:none}
@@ -142,6 +139,16 @@
             <a href="/benefit">💰 利益管理</a>
             <a href="/daily-summary">📈 每日总结</a>
         </div>
+    </div>
+
+    <!-- 🆕 加载进度条 -->
+    <div class="loading-bar-container" id="loadingBarContainer">
+        <span class="loading-bar-label"><i class="fas fa-spinner fa-spin"></i> 在庫読み込み中</span>
+        <div class="loading-bar-track">
+            <div class="loading-bar-fill" id="loadingBarFill" style="width:0%"></div>
+        </div>
+        <span class="loading-bar-text" id="loadingBarText">0 / 0</span>
+        <button class="btn-outline" onclick="cancelLoading()"><i class="fas fa-times"></i></button>
     </div>
 
     <!-- KPI -->
@@ -240,9 +247,17 @@
 </div>
 
 <script>
-    let allProducts = [], filteredProducts = [], currentPage = 1, itemsPerPage = 50;
+    // ===== 全局变量 =====
+    let allProducts = [];
+    let inventoryData = {};
+    let filteredProducts = [];
+    let currentPage = 1;
+    let itemsPerPage = 50;
     let allRecords = [];
     let currentTab = 'detail';
+    let isLoading = false;
+    let loadingInterval = null;
+    let loadingCancelled = false;
 
     // ===== Category helpers =====
     function getCategoryClass(c) {
@@ -267,23 +282,225 @@
         return String(str).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
     }
 
-    // ===== Load inventory =====
+    // ===== 🆕 异步加载库存 =====
     async function loadInventory() {
-        document.getElementById('inventoryTableBody').innerHTML =
-            '<tr><td colspan="8" class="loading"><div class="spinner"></div>読込中...</td></tr>';
+        const tbody = document.getElementById('inventoryTableBody');
+        tbody.innerHTML = '<tr><td colspan="8" class="loading"><div class="spinner"></div>商品データ読み込み中...</td></tr>';
+        
         try {
-            const res = await fetch('/api/inventory/all');
+            // 1. 获取商品列表
+            const res = await fetch('/api/products');
+            if (!res.ok) throw new Error('商品データの取得に失敗しました');
             allProducts = await res.json();
+            console.log('✅ 商品データ取得成功:', allProducts.length + '件');
+            
+            // 2. 初始化库存数据
+            inventoryData = {};
+            for (let p of allProducts) {
+                inventoryData[p.manageNumber] = { stock: null, loading: true };
+            }
+            
+            // 3. 显示商品列表（库存显示为"読込中"）
             filteredProducts = [...allProducts];
             updateStats();
-            applyFilters();
+            renderTable();
+            
+            // 4. 同步出库记录
             await syncRecords();
             await loadRecords();
+            
+            // 5. 启动库存加载
+            await startInventoryLoading();
+            
             document.getElementById('lastUpdate').innerText = new Date().toLocaleString();
+            
         } catch (e) {
-            document.getElementById('inventoryTableBody').innerHTML =
-                `<tr><td colspan="8" style="color:red;text-align:center;padding:30px">読込失敗: ${e.message}</td></tr>`;
+            console.error('❌ 加载失败:', e);
+            tbody.innerHTML = `<tr><td colspan="8" style="color:red;text-align:center;padding:30px">
+                ❌ 読込失敗: ${e.message}
+                <br><br>
+                <button onclick="loadInventory()" style="padding:8px 20px;border:none;background:#bf0000;color:white;border-radius:8px;cursor:pointer;">再試行</button>
+            </td></tr>`;
         }
+    }
+
+    async function startInventoryLoading() {
+        if (isLoading) return;
+        
+        // 如果没有商品数据，不启动
+        if (!allProducts || allProducts.length === 0) {
+            console.warn('⚠️ 商品データがありません');
+            return;
+        }
+        
+        // 显示进度条
+        const barContainer = document.getElementById('loadingBarContainer');
+        barContainer.classList.add('active');
+        document.getElementById('loadingBarFill').style.width = '0%';
+        document.getElementById('loadingBarText').textContent = '0 / ' + allProducts.length;
+        
+        isLoading = true;
+        loadingCancelled = false;
+        
+        try {
+            // 启动后台任务
+            const startRes = await fetch('/api/inventory/start-load', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ total: allProducts.length })
+            });
+            const startData = await startRes.json();
+            console.log('📦 库存加载启动:', startData);
+            
+            if (startData.status === 'started' || startData.status === 'loading') {
+                // 轮询状态
+                if (loadingInterval) clearInterval(loadingInterval);
+                loadingInterval = setInterval(checkLoadingStatus, 2000);
+            } else {
+                console.error('❌ 启动加载失败:', startData);
+                isLoading = false;
+                barContainer.classList.remove('active');
+                // 降级方案：使用同步方式
+                await loadInventorySync();
+            }
+        } catch (e) {
+            console.error('❌ 启动加载失败:', e);
+            isLoading = false;
+            barContainer.classList.remove('active');
+            // 降级方案
+            await loadInventorySync();
+        }
+    }
+
+    async function checkLoadingStatus() {
+        if (loadingCancelled) {
+            clearInterval(loadingInterval);
+            loadingInterval = null;
+            isLoading = false;
+            document.getElementById('loadingBarContainer').classList.remove('active');
+            return;
+        }
+        
+        try {
+            const res = await fetch('/api/inventory/status');
+            const data = await res.json();
+            console.log('📊 加载状态:', data);
+            
+            // 更新进度条
+            const progress = data.progress || 0;
+            const total = data.total || allProducts.length || 1;
+            const pct = Math.min(100, Math.round((progress / total) * 100));
+            
+            document.getElementById('loadingBarFill').style.width = pct + '%';
+            document.getElementById('loadingBarText').textContent = progress + ' / ' + total;
+            
+            // 如果加载完成
+            if (!data.loading && data.has_data) {
+                clearInterval(loadingInterval);
+                loadingInterval = null;
+                isLoading = false;
+                document.getElementById('loadingBarContainer').classList.remove('active');
+                
+                // 获取结果
+                await fetchInventoryResult();
+            }
+            
+            // 如果加载状态异常
+            if (!data.loading && !data.has_data && progress === 0 && total === 0) {
+                console.warn('⚠️ 加载状态异常，尝试降级方案');
+                clearInterval(loadingInterval);
+                loadingInterval = null;
+                isLoading = false;
+                document.getElementById('loadingBarContainer').classList.remove('active');
+                await loadInventorySync();
+            }
+        } catch (e) {
+            console.error('❌ 状态检查失败:', e);
+        }
+    }
+
+    async function fetchInventoryResult() {
+        try {
+            const res = await fetch('/api/inventory/result');
+            const data = await res.json();
+            
+            if (data.status === 'done' && data.data) {
+                console.log('✅ 库存加载完成:', data.data.length + '件');
+                // 更新库存数据
+                for (let item of data.data) {
+                    if (inventoryData[item.manageNumber]) {
+                        inventoryData[item.manageNumber].stock = item.stock;
+                        inventoryData[item.manageNumber].loading = false;
+                    }
+                }
+                
+                // 重新渲染表格
+                renderTable();
+                updateStats();
+                document.getElementById('lastUpdate').innerText = new Date().toLocaleString() + ' (在庫読み込み完了)';
+            }
+        } catch (e) {
+            console.error('❌ 获取库存结果失败:', e);
+        }
+    }
+
+    // ===== 降级方案：同步加载库存 =====
+    async function loadInventorySync() {
+        console.log('🔄 降级方案: 使用同期方式加载库存...');
+        const barContainer = document.getElementById('loadingBarContainer');
+        barContainer.classList.add('active');
+        document.getElementById('loadingBarFill').style.width = '50%';
+        document.getElementById('loadingBarText').textContent = '同期読み込み中...';
+        
+        try {
+            const res = await fetch('/api/inventory/all');
+            const data = await res.json();
+            console.log('✅ 同期加载完成:', data.length + '件');
+            
+            for (let item of data) {
+                if (inventoryData[item.manageNumber]) {
+                    inventoryData[item.manageNumber].stock = item.stock;
+                    inventoryData[item.manageNumber].loading = false;
+                }
+            }
+            
+            barContainer.classList.remove('active');
+            renderTable();
+            updateStats();
+            document.getElementById('lastUpdate').innerText = new Date().toLocaleString() + ' (同期完了)';
+        } catch (e) {
+            console.error('❌ 同期加载失败:', e);
+            barContainer.classList.remove('active');
+            // 即使失败，也将库存设为0
+            for (let mn in inventoryData) {
+                if (inventoryData[mn].loading) {
+                    inventoryData[mn].stock = 0;
+                    inventoryData[mn].loading = false;
+                }
+            }
+            renderTable();
+            updateStats();
+        }
+    }
+
+    function cancelLoading() {
+        loadingCancelled = true;
+        if (loadingInterval) {
+            clearInterval(loadingInterval);
+            loadingInterval = null;
+        }
+        isLoading = false;
+        document.getElementById('loadingBarContainer').classList.remove('active');
+        
+        // 将未加载的库存标记为0
+        for (let mn in inventoryData) {
+            if (inventoryData[mn].loading) {
+                inventoryData[mn].stock = 0;
+                inventoryData[mn].loading = false;
+            }
+        }
+        renderTable();
+        updateStats();
     }
 
     async function syncRecords() {
@@ -294,7 +511,8 @@
     function updateStats() {
         let totalStock = 0, totalValue = 0, lowStock = 0;
         for (let p of allProducts) {
-            let s = p.stock || 0;
+            let s = inventoryData[p.manageNumber]?.stock;
+            if (s === undefined || s === null) s = 0;
             totalStock += s;
             totalValue += (p.price || 0) * s;
             if (s > 0 && s < 10) lowStock++;
@@ -315,10 +533,25 @@
         let sort = document.getElementById('sortSelect').value;
         if (sort === 'price_asc') f.sort((a,b) => (a.price||0)-(b.price||0));
         else if (sort === 'price_desc') f.sort((a,b) => (b.price||0)-(a.price||0));
-        else if (sort === 'stock_asc') f.sort((a,b) => (a.stock||0)-(b.stock||0));
-        else if (sort === 'stock_desc') f.sort((a,b) => (b.stock||0)-(a.stock||0));
-        else if (sort === 'value_desc') f.sort((a,b) => ((b.price||0)*(b.stock||0))-((a.price||0)*(a.stock||0)));
-        else f.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+        else if (sort === 'stock_asc') {
+            f.sort((a,b) => {
+                const sa = inventoryData[a.manageNumber]?.stock ?? 0;
+                const sb = inventoryData[b.manageNumber]?.stock ?? 0;
+                return sa - sb;
+            });
+        } else if (sort === 'stock_desc') {
+            f.sort((a,b) => {
+                const sa = inventoryData[a.manageNumber]?.stock ?? 0;
+                const sb = inventoryData[b.manageNumber]?.stock ?? 0;
+                return sb - sa;
+            });
+        } else if (sort === 'value_desc') {
+            f.sort((a,b) => {
+                const va = (a.price||0) * (inventoryData[a.manageNumber]?.stock ?? 0);
+                const vb = (b.price||0) * (inventoryData[b.manageNumber]?.stock ?? 0);
+                return vb - va;
+            });
+        } else f.sort((a,b) => (a.name||'').localeCompare(b.name||''));
         filteredProducts = f;
         currentPage = 1;
         renderTable();
@@ -329,23 +562,42 @@
         let tbody = document.getElementById('inventoryTableBody');
         let start = (currentPage - 1) * itemsPerPage;
         let page = filteredProducts.slice(start, start + itemsPerPage);
+        
         if (!page.length) {
             tbody.innerHTML = '<tr><td colspan="8" class="empty">該当データなし</td></tr>';
-            renderPagination(0); return;
+            renderPagination(0);
+            return;
         }
+        
         tbody.innerHTML = page.map(p => {
-            let s = p.stock || 0, v = (p.price||0)*s;
-            let badge = s===0 ? 'stock-zero' : s<10 ? 'stock-low' : 'stock-high';
-            let txt   = s===0 ? '欠品' : s<10 ? '不足' : '充足';
+            const inv = inventoryData[p.manageNumber] || { stock: 0, loading: false };
+            const s = inv.loading ? null : (inv.stock ?? 0);
+            const v = (p.price||0) * (s || 0);
+            
+            let badge, txt;
+            if (s === null) {
+                badge = 'stock-loading';
+                txt = '読込中...';
+            } else if (s === 0) {
+                badge = 'stock-zero';
+                txt = '欠品';
+            } else if (s < 10) {
+                badge = 'stock-low';
+                txt = '不足';
+            } else {
+                badge = 'stock-high';
+                txt = '充足';
+            }
+            
             return `<tr>
                 <td style="font-family:monospace;font-size:11px">${escapeHtml(p.manageNumber)}</td>
                 <td style="max-width:200px;word-break:break-all;line-height:1.4">${escapeHtml(p.name)}</td>
                 <td><span class="category-badge ${getCategoryClass(p.category)}">${getCategoryIcon(p.category)}</span></td>
                 <td>¥${(p.price||0).toLocaleString()}</td>
-                <td style="font-weight:700">${s}</td>
-                <td>¥${v.toLocaleString()}</td>
+                <td style="font-weight:700">${s !== null ? s : '⏳'}</td>
+                <td>${s !== null ? '¥' + v.toLocaleString() : '⏳'}</td>
                 <td><span class="stock-badge ${badge}">${txt}</span></td>
-                <td><button class="action-btn" onclick="showOutStockModal('${p.manageNumber}','${escapeHtml(p.name).replace(/'/g,"\\'")}',${s})">出庫</button></td>
+                <td><button class="action-btn" onclick="showOutStockModal('${p.manageNumber}','${escapeHtml(p.name).replace(/'/g,"\\'")}',${s !== null ? s : 0})" ${s === null ? 'disabled' : ''}>出庫</button></td>
             </tr>`;
         }).join('');
         renderPagination(filteredProducts.length);
@@ -366,7 +618,8 @@
 
     function changePage(p) {
         if (p < 1 || p > Math.ceil(filteredProducts.length/itemsPerPage)) return;
-        currentPage = p; renderTable();
+        currentPage = p;
+        renderTable();
     }
 
     // ===== Load outstock records =====
@@ -503,6 +756,7 @@
         } catch(e) { alert(`❌ 出庫失敗: ${e.message}`); }
     }
 
+    // ===== 启动 =====
     loadInventory();
 </script>
 </body>
