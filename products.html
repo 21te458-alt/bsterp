@@ -58,6 +58,55 @@
         @keyframes spin{to{transform:rotate(360deg)}}
         .footer{text-align:center;padding:20px;color:#94a3b8;font-size:12px}
         @media (max-width:768px){body{padding:16px}.toolbar{flex-direction:column;align-items:stretch}.search-box{max-width:none}th,td{padding:8px;font-size:12px}.category-badge{font-size:9px;padding:2px 6px}}
+    /* ============================================================
+   📱 移动端适配
+   ============================================================ */
+
+/* 平板设备 */
+@media (max-width: 1024px) {
+    .stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* 手机设备 */
+@media (max-width: 768px) {
+    body { padding: 10px; }
+    
+    .header { padding: 14px 16px; border-radius: 12px; }
+    .header h1 { font-size: 1.1rem; }
+    .header p { font-size: 0.7rem; }
+    .nav-links { gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15); }
+    .nav-links a { font-size: 0.65rem; padding: 3px 8px; background: rgba(255,255,255,0.08); border-radius: 12px; white-space: nowrap; }
+    .nav-links a.active { background: rgba(255,255,255,0.2); }
+    
+    .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .stat-card { padding: 8px 6px; border-radius: 10px; }
+    .stat-number { font-size: 14px; }
+    .stat-label { font-size: 8px; }
+    .stat-icon { font-size: 18px; margin-bottom: 4px; }
+    
+    .toolbar { flex-direction: column; align-items: stretch; padding: 12px 14px; gap: 8px; }
+    .search-box { max-width: none; }
+    .search-box input { width: 100%; font-size: 12px; padding: 8px 12px; }
+    .toolbar .btn { justify-content: center; padding: 8px; font-size: 12px; }
+    .toolbar > div { flex-wrap: wrap; gap: 6px; }
+    .toolbar > div .btn { flex: 1; min-width: 60px; }
+    
+    .table-wrapper { border-radius: 12px; }
+    .table-wrapper > div { max-height: 50vh; }
+    table { font-size: 10px; min-width: 420px; }
+    th, td { padding: 5px 6px; }
+    th { font-size: 9px; }
+    td { font-size: 10px; }
+    td:nth-child(2) { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .category-badge { font-size: 8px; padding: 2px 5px; }
+    
+    .pagination { padding: 8px; gap: 3px; }
+    .page-btn { padding: 4px 8px; font-size: 10px; border-radius: 6px; }
+    
+    .footer { font-size: 10px; padding: 12px; }
+}
     </style>
 </head>
 <body>
