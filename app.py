@@ -910,7 +910,7 @@ def calculate_benefit():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-# ========== 每日数据总结API ==========
+# ========== 每日数据总结API（修改版：排除取消订单） ==========
 @app.route('/api/daily-summary')
 def daily_summary_api():
     _t0 = time.time()
@@ -956,6 +956,7 @@ def daily_summary_api():
         total_orders = 0
         total_sales = 0
         order_details = []
+        cancelled_count = 0  # 🆕 统计取消订单数
         
         try:
             search_data = {
@@ -974,8 +975,8 @@ def daily_summary_api():
             if search_response.status_code == 200:
                 search_result = search_response.json()
                 order_numbers = search_result.get('orderNumberList', [])
-                total_orders = len(order_numbers)
                 
+                # 分批获取全部订单详情
                 for i in range(0, len(order_numbers), 100):
                     batch = order_numbers[i:i + 100]
                     detail_response = session.post(
@@ -992,6 +993,16 @@ def daily_summary_api():
                     orders = detail_data.get('OrderModelList', [])
                     
                     for order in orders:
+                        # 🔧 检查订单状态，跳过已取消的订单 (600)
+                        order_progress = order.get('orderProgress', 0)
+                        order_number = order.get('orderNumber', '')
+                        
+                        if order_progress == 600:
+                            cancelled_count += 1
+                            print(f"⏭️ 跳过取消订单: {order_number}")
+                            continue
+                        
+                        total_orders += 1
                         total_amount = order.get('requestPrice', 0) or order.get('totalPrice', 0) or 0
                         total_sales += total_amount
                         
@@ -1021,16 +1032,16 @@ def daily_summary_api():
                                 break
                         
                         order_details.append({
-                            'orderNumber': order.get('orderNumber', ''),
+                            'orderNumber': order_number,
                             'orderDate': (order.get('orderDatetime', '')[:10]) if order.get('orderDatetime') else '',
                             'customerName': customer_name,
                             'totalAmount': total_amount,
-                            'status': order.get('orderProgress', 0),
+                            'status': order_progress,
                             'category': order_category,
                             'items': item_list
                         })
             
-            print(f"[每日总结] 订单数: {total_orders}, 销售额: ¥{total_sales}, 耗时: {time.time()-_t0:.1f}秒")
+            print(f"[每日总结] 有效订单数: {total_orders}, 取消订单数: {cancelled_count}, 销售额: ¥{total_sales}, 耗时: {time.time()-_t0:.1f}秒")
                         
         except Exception as e:
             print(f"订单API调用异常: {e}")
@@ -1089,7 +1100,8 @@ def daily_summary_api():
                     'count': total_orders,
                     'sales': total_sales,
                     'profit': estimated_profit,
-                    'profit_rate': profit_rate
+                    'profit_rate': profit_rate,
+                    'cancelled_count': cancelled_count  # 🆕 返回取消订单数
                 },
                 'categories': category_list,
                 'order_items': order_details,
