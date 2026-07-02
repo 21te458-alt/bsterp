@@ -25,12 +25,9 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-me')
 app.config['SECRET_KEY'] = SECRET_KEY
 
 # ===== 数据文件路径（兼容 Render 部署） =====
-# Render 使用临时存储，但我们可以尝试持久化
-# 如果设置了 DATA_DIR 环境变量，使用该目录
 DATA_DIR = os.environ.get('DATA_DIR', os.path.dirname(os.path.abspath(__file__)))
 STOCK_RECORDS_FILE = os.path.join(DATA_DIR, 'stock_records.json')
 
-# 确保数据目录存在
 os.makedirs(os.path.dirname(STOCK_RECORDS_FILE) or '.', exist_ok=True)
 
 print(f"[启动] 数据文件路径: {STOCK_RECORDS_FILE}")
@@ -47,6 +44,7 @@ session.headers.update({'Authorization': get_auth_header()})
 
 # 商品列表缓存
 _products_cache = {'data': None, 'time': 0}
+_inventory_cache = {'data': None, 'loading': False, 'progress': 0, 'total': 0, 'last_update': None}
 PRODUCTS_CACHE_TTL = 300
 
 # ========== アニメ・グッズのgenreId ==========
@@ -129,7 +127,7 @@ ORDER_SEARCH_URL = "https://api.rms.rakuten.co.jp/es/2.0/order/searchOrder/"
 ORDER_GET_URL = "https://api.rms.rakuten.co.jp/es/2.0/order/getOrder/"
 ORDER_API_HEADERS = {'Content-Type': 'application/json; charset=utf-8'}
 
-# ========== 入库/出库记录管理（增强版） ==========
+# ========== 入库/出库记录管理 ==========
 def load_stock_records():
     """加载库存记录（同时支持入库和出库）"""
     default = {'出库记录': [], '入库记录': []}
@@ -146,13 +144,11 @@ def load_stock_records():
             print(f"读取数据文件失败: {e}，使用默认数据")
             return default
     
-    # 文件不存在，创建空文件
     save_stock_records(default)
     return default
 
 def save_stock_records(records):
     """保存库存记录"""
-    # 确保数据格式完整
     if '出库记录' not in records:
         records['出库记录'] = []
     if '入库记录' not in records:
@@ -164,7 +160,6 @@ def save_stock_records(records):
         return True
     except Exception as e:
         print(f"保存数据失败: {e}")
-        # 尝试使用备用路径
         backup_file = STOCK_RECORDS_FILE + '.backup'
         try:
             with open(backup_file, 'w', encoding='utf-8') as f:
@@ -186,7 +181,7 @@ def get_current_stock(manage_number):
             return 0
         except requests.exceptions.RequestException:
             if attempt < 2:
-                time.sleep(1 * (attempt + 1))  # 递增延迟
+                time.sleep(1 * (attempt + 1))
                 continue
             return 0
     return 0
@@ -203,7 +198,6 @@ def update_inventory_direct(manage_number, change):
         try:
             response = session.put(url, json=body, timeout=30)
             if response.status_code == 200:
-                # 更新缓存
                 if _products_cache['data'] is not None:
                     for p in _products_cache['data']:
                         if p['manageNumber'] == manage_number:
@@ -303,7 +297,7 @@ def get_cached_products(force_refresh=False):
     print(f"使用缓存（{int(now - _products_cache['time'])}秒前）")
     return _products_cache['data']
 
-# ========== 获取单个商品库存 ==========
+# ========== 获取单个商品库存（带重试） ==========
 def get_single_stock(manage_number):
     """获取单个商品库存（带重试）"""
     url = f"https://api.rms.rakuten.co.jp/es/2.1/inventories/manage-numbers/{manage_number}/variants/{manage_number}"
@@ -330,21 +324,172 @@ def get_products():
     force_refresh = request.args.get('refresh', 'false').lower() == 'true'
     return jsonify(get_cached_products(force_refresh))
 
-# ========== 获取所有商品库存 ==========
+# ========== 🆕 获取单个商品库存（前端按需调用） ==========
+@app.route('/api/inventory/single/<manage_number>', methods=['GET'])
+def get_single_inventory(manage_number):
+    """获取单个商品库存（供前端分批加载）"""
+    try:
+        stock_data = get_single_stock(manage_number)
+        return jsonify({
+            'manageNumber': stock_data['manageNumber'],
+            'stock': stock_data['stock']
+        })
+    except Exception as e:
+        return jsonify({'manageNumber': manage_number, 'stock': 0, 'error': str(e)}), 500
+
+# ========== 🆕 批量获取库存（前端分批请求，避免超时） ==========
+@app.route('/api/inventory/batch', methods=['POST'])
+def get_inventory_batch():
+    """批量获取库存（前端传入商品列表，每批最多100件）"""
+    try:
+        data = request.json
+        manage_numbers = data.get('manageNumbers', [])
+        
+        if not manage_numbers:
+            return jsonify([])
+        
+        # 限制单次请求数量，避免超时
+        if len(manage_numbers) > 100:
+            return jsonify({'error': 'Too many items, max 100 per request'}), 400
+        
+        results = []
+        # 使用小线程池，避免限流
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+            futures = {executor.submit(get_single_stock, mn): mn for mn in manage_numbers}
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    result = future.result(timeout=30)
+                    results.append(result)
+                except Exception as e:
+                    mn = futures[future]
+                    results.append({'manageNumber': mn, 'stock': 0, 'error': str(e)})
+        
+        return jsonify(results)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ========== 🆕 异步加载库存（后台执行，轮询进度） ==========
+@app.route('/api/inventory/start-load', methods=['POST'])
+def start_inventory_load():
+    """启动后台库存加载任务"""
+    global _inventory_cache
+    
+    if _inventory_cache['loading']:
+        return jsonify({'status': 'loading', 'progress': _inventory_cache['progress'], 'total': _inventory_cache['total']})
+    
+    products = get_cached_products()
+    _inventory_cache['loading'] = True
+    _inventory_cache['progress'] = 0
+    _inventory_cache['total'] = len(products)
+    _inventory_cache['data'] = None
+    _inventory_cache['last_update'] = None
+    
+    # 在后台线程中执行
+    import threading
+    thread = threading.Thread(target=_load_inventory_background)
+    thread.daemon = True
+    thread.start()
+    
+    return jsonify({'status': 'started', 'total': len(products)})
+
+def _load_inventory_background():
+    """后台加载库存数据"""
+    global _inventory_cache
+    
+    try:
+        products = get_cached_products()
+        total = len(products)
+        all_data = []
+        batch_size = 50  # 每批50件
+        
+        product_info = {p['manageNumber']: p for p in products}
+        
+        for i in range(0, total, batch_size):
+            batch = products[i:i + batch_size]
+            batch_numbers = [p['manageNumber'] for p in batch]
+            
+            # 并发获取这批库存
+            with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+                futures = [executor.submit(get_single_stock, mn) for mn in batch_numbers]
+                for future in concurrent.futures.as_completed(futures):
+                    try:
+                        stock_data = future.result(timeout=30)
+                        info = product_info.get(stock_data['manageNumber'], {})
+                        all_data.append({
+                            'manageNumber': stock_data['manageNumber'],
+                            'name': info.get('name', '无商品名'),
+                            'price': info.get('price', 0),
+                            'stock': stock_data['stock'],
+                            'itemType': info.get('itemType', 'NORMAL'),
+                            'genreId': info.get('genreId', ''),
+                            'category': info.get('category', 'その他'),
+                            'status': info.get('status', '贩售中')
+                        })
+                    except Exception as e:
+                        print(f"获取库存失败: {e}")
+            
+            # 更新进度
+            _inventory_cache['progress'] = min(i + batch_size, total)
+            print(f"库存加载进度: {_inventory_cache['progress']}/{total}")
+            
+            # 每批之间休息1秒，避免限流
+            time.sleep(1)
+        
+        _inventory_cache['data'] = all_data
+        _inventory_cache['last_update'] = datetime.now().isoformat()
+        _inventory_cache['loading'] = False
+        
+        print(f"库存加载完成！共 {len(all_data)} 件商品")
+        
+    except Exception as e:
+        print(f"后台加载库存失败: {e}")
+        _inventory_cache['loading'] = False
+
+@app.route('/api/inventory/status', methods=['GET'])
+def get_inventory_status():
+    """获取库存加载状态"""
+    global _inventory_cache
+    return jsonify({
+        'loading': _inventory_cache['loading'],
+        'progress': _inventory_cache['progress'],
+        'total': _inventory_cache['total'],
+        'last_update': _inventory_cache['last_update'],
+        'has_data': _inventory_cache['data'] is not None
+    })
+
+@app.route('/api/inventory/result', methods=['GET'])
+def get_inventory_result():
+    """获取已加载的库存数据"""
+    global _inventory_cache
+    if _inventory_cache['loading']:
+        return jsonify({'status': 'loading', 'progress': _inventory_cache['progress'], 'total': _inventory_cache['total']})
+    
+    if _inventory_cache['data'] is None:
+        return jsonify({'status': 'not_started'})
+    
+    return jsonify({
+        'status': 'done',
+        'data': _inventory_cache['data'],
+        'total': len(_inventory_cache['data']),
+        'last_update': _inventory_cache['last_update']
+    })
+
+# ========== 原有库存API（保留兼容，但增加超时保护） ==========
 @app.route('/api/inventory/all', methods=['GET'])
 def get_all_inventory():
+    """获取所有商品库存（直接方式，可能超时，建议使用异步方式）"""
     print("开始获取库存数据...")
     start_time = time.time()
     
     products = get_cached_products()
     
-    print(f"共 {len(products)} 件商品，100线程并发获取库存...")
+    print(f"共 {len(products)} 件商品，30线程并发获取库存...")
     
     product_info = {p['manageNumber']: p for p in products}
     all_data = []
     done_count = 0
     
-    # 使用线程池并发获取（并发数不宜过高，避免触发楽天API限流导致大量重试、拖长总耗时）
     max_workers = min(30, len(products) or 1)
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(get_single_stock, p['manageNumber']) for p in products]
@@ -415,19 +560,16 @@ def add_instock():
         if not manage_number or quantity <= 0:
             return jsonify({'success': False, 'error': '参数错误'}), 400
         
-        # 更新库存
         success, new_stock = update_inventory_direct(manage_number, quantity)
         if not success:
             return jsonify({'success': False, 'error': '更新库存失败'}), 500
         
-        # 获取商品信息
         product = None
         for p in get_cached_products():
             if p['manageNumber'] == manage_number:
                 product = p
                 break
         
-        # 保存记录
         records = load_stock_records()
         records['入库记录'].insert(0, {
             'id': int(time.time() * 1000),
@@ -452,7 +594,6 @@ def sync_instock_from_products():
         products = get_cached_products()
         records = load_stock_records()
 
-        # 获取已有的入库记录中的商品管理番号
         existing_manage_numbers = set()
         for r in records.get('入库记录', []):
             existing_manage_numbers.add(r.get('manageNumber', ''))
@@ -463,7 +604,6 @@ def sync_instock_from_products():
         for p in products:
             manage_number = p.get('manageNumber')
             if manage_number and manage_number not in existing_manage_numbers:
-                # 首次运行时，获取实际库存数量；否则当作新上架商品
                 if is_first_run:
                     stock_result = get_single_stock(manage_number)
                     quantity = stock_result.get('stock', 0)
@@ -507,24 +647,20 @@ def add_outstock():
         if not manage_number or quantity <= 0:
             return jsonify({'success': False, 'error': '参数错误'}), 400
         
-        # 先获取当前库存
         current_stock = get_current_stock(manage_number)
         if current_stock < quantity:
             return jsonify({'success': False, 'error': f'库存不足，当前库存: {current_stock}'}), 400
         
-        # 更新库存（减少）
         success, new_stock = update_inventory_direct(manage_number, -quantity)
         if not success:
             return jsonify({'success': False, 'error': '更新库存失败'}), 500
         
-        # 获取商品信息
         product = None
         for p in get_cached_products():
             if p['manageNumber'] == manage_number:
                 product = p
                 break
         
-        # 保存记录
         records = load_stock_records()
         records['出库记录'].insert(0, {
             'id': int(time.time() * 1000),
@@ -546,7 +682,6 @@ def add_outstock():
 def sync_outstock_from_orders():
     """从订单API同步出库记录（仅记录，不扣减库存）"""
     try:
-        # 获取最近30天的订单
         end_date = datetime.now()
         start_date = end_date - timedelta(days=30)
 
@@ -572,14 +707,12 @@ def sync_outstock_from_orders():
         if not order_numbers:
             return jsonify({'success': True, 'new_outstock_count': 0, 'message': '没有订单数据'})
 
-        # 加载已有出库记录，用订单号去重
         records = load_stock_records()
         existing_order_ids = set()
         for r in records.get('出库记录', []):
             if r.get('orderNumber'):
                 existing_order_ids.add(r['orderNumber'])
 
-        # 过滤出未记录的订单号
         new_order_numbers = [n for n in order_numbers if n not in existing_order_ids]
         if not new_order_numbers:
             return jsonify({'success': True, 'new_outstock_count': 0, 'message': '没有新订单'})
@@ -644,13 +777,12 @@ def get_stock_records_api():
     try:
         limit = int(request.args.get('limit', 100))
         offset = int(request.args.get('offset', 0))
-        record_type = request.args.get('type', 'all')  # 'out', 'in', 'all'
+        record_type = request.args.get('type', 'all')
         start_date = request.args.get('start_date', '')
         end_date = request.args.get('end_date', '')
         
         records = load_stock_records()
         
-        # 合并记录
         all_records = []
         if record_type in ['all', 'out']:
             for r in records.get('出库记录', []):
@@ -661,10 +793,8 @@ def get_stock_records_api():
                 r['_type'] = '入库'
                 all_records.append(r)
         
-        # 按时间排序（最新的在前）
         all_records.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
         
-        # 日期过滤
         if start_date:
             all_records = [r for r in all_records if r.get('timestamp', '') >= start_date]
         if end_date:
@@ -801,7 +931,6 @@ def daily_summary_api():
         
         products = get_cached_products()
         
-        # manageNumber -> 真实分类 的映射，供订单明细直接反查，避免用标题关键词瞎猜（アニメ・グッズ靠genreId判断，标题里未必带关键词）
         manage_number_to_category = {}
         for p in products:
             mn = p.get('manageNumber')
@@ -847,7 +976,6 @@ def daily_summary_api():
                 order_numbers = search_result.get('orderNumberList', [])
                 total_orders = len(order_numbers)
                 
-                # 分批获取全部订单详情
                 for i in range(0, len(order_numbers), 100):
                     batch = order_numbers[i:i + 100]
                     detail_response = session.post(
@@ -872,7 +1000,6 @@ def daily_summary_api():
                         first_name = orderer_info.get('ordererFirstName', '') or ''
                         customer_name = (last_name + first_name).strip() or orderer_info.get('ordererLastNameKana', '') or '---'
                         
-                        # 商品明细：优先用manageNumber反查商品库真实分类，取不到再退化为"その他"
                         packages = order.get('PackageModelList', order.get('packageModelList', [])) or []
                         item_list = []
                         for pkg in packages:
@@ -1024,10 +1151,9 @@ def debug_orders():
         import traceback
         return jsonify({'error': str(e), 'trace': traceback.format_exc()})
 
-# ========== 健康检查端点（用于 Render 监控） ==========
+# ========== 健康检查端点 ==========
 @app.route('/health')
 def health_check():
-    """健康检查端点"""
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
@@ -1073,7 +1199,6 @@ if __name__ == '__main__':
     print("健康检查: http://127.0.0.1:5000/health")
     print("=" * 60)
     
-    # Render 使用 PORT 环境变量
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_ENV', 'production') != 'production'
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
