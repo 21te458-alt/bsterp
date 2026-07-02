@@ -783,6 +783,7 @@ def calculate_benefit():
 # ========== 每日数据总结API ==========
 @app.route('/api/daily-summary')
 def daily_summary_api():
+    _t0 = time.time()
     start_date_str = request.args.get('start_date', '')
     end_date_str = request.args.get('end_date', '')
     
@@ -799,6 +800,13 @@ def daily_summary_api():
         ]
         
         products = get_cached_products()
+        
+        # manageNumber -> 真实分类 的映射，供订单明细直接反查，避免用标题关键词瞎猜（アニメ・グッズ靠genreId判断，标题里未必带关键词）
+        manage_number_to_category = {}
+        for p in products:
+            mn = p.get('manageNumber')
+            if mn:
+                manage_number_to_category[mn] = p.get('category', 'その他')
         
         category_count = {}
         category_total_price = {}
@@ -864,30 +872,26 @@ def daily_summary_api():
                         first_name = orderer_info.get('ordererFirstName', '') or ''
                         customer_name = (last_name + first_name).strip() or orderer_info.get('ordererLastNameKana', '') or '---'
                         
+                        # 商品明细：优先用manageNumber反查商品库真实分类，取不到再退化为"その他"
                         packages = order.get('PackageModelList', order.get('packageModelList', [])) or []
                         item_list = []
                         for pkg in packages:
                             items = pkg.get('ItemModelList', pkg.get('itemModelList', [])) or []
                             for item in items:
+                                manage_number = item.get('manageNumber', '')
                                 item_list.append({
                                     'name': item.get('itemName', ''),
                                     'quantity': item.get('units', item.get('quantity', 1)),
-                                    'price': item.get('price', 0)
+                                    'price': item.get('price', 0),
+                                    'manageNumber': manage_number
                                 })
                         
                         order_category = 'その他'
-                        if item_list:
-                            first_item_name = item_list[0]['name'] or ''
-                            if '【天然生活】' in first_item_name:
-                                order_category = '食品・お菓子・天然生活'
-                            elif any(kw in first_item_name for kw in ['予約', '予约', '受注生産', '入荷予定', '発売予定']):
-                                order_category = 'アニメ・グッズ（预售）'
-                            elif any(kw in first_item_name for kw in ['サプリ', '健康']):
-                                order_category = '健康食品'
-                            elif any(kw in first_item_name for kw in ['美容', 'コスメ']):
-                                order_category = '美容・コスメ・ボディケア'
-                            elif any(kw in first_item_name for kw in ['アニメ', 'グッズ']):
-                                order_category = 'アニメ・グッズ（在库）'
+                        for it in item_list:
+                            mn = it.get('manageNumber')
+                            if mn and mn in manage_number_to_category:
+                                order_category = manage_number_to_category[mn]
+                                break
                         
                         order_details.append({
                             'orderNumber': order.get('orderNumber', ''),
@@ -899,7 +903,7 @@ def daily_summary_api():
                             'items': item_list
                         })
             
-            print(f"[每日总结] 订单数: {total_orders}, 销售额: ¥{total_sales}")
+            print(f"[每日总结] 订单数: {total_orders}, 销售额: ¥{total_sales}, 耗时: {time.time()-_t0:.1f}秒")
                         
         except Exception as e:
             print(f"订单API调用异常: {e}")
@@ -911,21 +915,29 @@ def daily_summary_api():
         total_stock_value = 0
         
         try:
-            for p in products[:100]:
-                stock_result = get_single_stock(p['manageNumber'])
-                stock_qty = stock_result.get('stock', 0)
-                if stock_qty > 0:
-                    price = p.get('price', 0)
-                    value = price * stock_qty
-                    total_stock_value += value
-                    stock_items.append({
-                        'name': p.get('name', '')[:35],
-                        'price': price,
-                        'qty': stock_qty,
-                        'value': value,
-                        'category': p.get('category', 'その他')
-                    })
+            target_products = products[:100]
+            with concurrent.futures.ThreadPoolExecutor(max_workers=30) as executor:
+                futures = {executor.submit(get_single_stock, p['manageNumber']): p for p in target_products}
+                for future in concurrent.futures.as_completed(futures):
+                    p = futures[future]
+                    try:
+                        stock_result = future.result()
+                    except Exception:
+                        continue
+                    stock_qty = stock_result.get('stock', 0)
+                    if stock_qty > 0:
+                        price = p.get('price', 0)
+                        value = price * stock_qty
+                        total_stock_value += value
+                        stock_items.append({
+                            'name': p.get('name', '')[:35],
+                            'price': price,
+                            'qty': stock_qty,
+                            'value': value,
+                            'category': p.get('category', 'その他')
+                        })
             stock_items.sort(key=lambda x: x['value'], reverse=True)
+            print(f"[每日总结] 库存查询完成，耗时: {time.time()-_t0:.1f}秒")
         except Exception as e:
             print(f"库存统计异常: {e}")
         
@@ -961,6 +973,7 @@ def daily_summary_api():
             }
         }
         
+        print(f"[每日总结] 全部完成，总耗时: {time.time()-_t0:.1f}秒")
         return jsonify(result)
         
     except Exception as e:
