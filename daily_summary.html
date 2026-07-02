@@ -112,6 +112,86 @@
         .modal-item{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
         .modal-item-name{flex:1}
         .modal-item-meta{color:#64748b;white-space:nowrap}
+        /* ============================================================
+   📱 移动端适配
+   ============================================================ */
+
+/* 平板设备 */
+@media (max-width: 1024px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .category-grid { grid-template-columns: repeat(2, 1fr); }
+    .two-columns { grid-template-columns: 1fr; }
+}
+
+/* 手机设备 */
+@media (max-width: 768px) {
+    body { padding: 8px; }
+    
+    .header { padding: 12px 14px; border-radius: 12px; }
+    .header h1 { font-size: 1.1rem; }
+    .header p { font-size: 0.7rem; }
+    .nav-links { gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15); }
+    .nav-links a { font-size: 0.6rem; padding: 3px 8px; background: rgba(255,255,255,0.08); border-radius: 12px; white-space: nowrap; }
+    .nav-links a.active { background: rgba(255,255,255,0.2); }
+    
+    .filter-bar { padding: 12px 14px; border-radius: 12px; flex-direction: column; align-items: stretch; gap: 8px; }
+    .filter-group { width: 100%; }
+    .filter-group label { font-size: 10px; }
+    .filter-group input, .filter-group select { padding: 8px 10px; font-size: 12px; border-radius: 8px; width: 100%; }
+    .filter-bar .btn { justify-content: center; padding: 8px; font-size: 12px; }
+    .filter-bar > div { flex-wrap: wrap; }
+    .filter-bar > div .btn { flex: 1; min-width: 60px; }
+    
+    .kpi-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .kpi-card { padding: 12px; border-radius: 12px; }
+    .kpi-value { font-size: 20px; }
+    .kpi-label { font-size: 10px; }
+    .kpi-icon { width: 36px; height: 36px; font-size: 18px; border-radius: 12px; }
+    
+    .section-title { font-size: 14px; margin: 16px 0 10px; }
+    
+    .category-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .category-card { padding: 10px 12px; border-radius: 12px; }
+    .category-icon { font-size: 20px; }
+    .category-name { font-size: 10px; }
+    .category-count { font-size: 18px; }
+    .category-percent { font-size: 10px; }
+    .category-bar { height: 4px; margin-top: 6px; }
+    
+    .two-columns { grid-template-columns: 1fr; gap: 12px; }
+    .info-card { padding: 14px 16px; border-radius: 12px; }
+    .info-card h3 { font-size: 14px; }
+    .stock-item { padding: 8px 0; }
+    .stock-name { font-size: 11px; }
+    .stock-meta { font-size: 9px; }
+    .stock-price { font-size: 13px; }
+    
+    .orders-card { padding: 14px 12px; border-radius: 12px; }
+    .orders-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+    .orders-toolbar input { padding: 8px 10px; font-size: 12px; border-radius: 8px; }
+    .orders-toolbar .btn { justify-content: center; padding: 6px 12px; font-size: 11px; }
+    .orders-count { font-size: 11px; text-align: center; }
+    
+    .orders-table { font-size: 10px; min-width: 380px; }
+    .orders-table th, .orders-table td { padding: 4px 5px; }
+    .orders-table th { font-size: 8px; }
+    .orders-table td { font-size: 9px; }
+    .order-num { font-size: 8px; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .category-badge { font-size: 7px; padding: 1px 4px; }
+    .status-badge { font-size: 7px; padding: 1px 6px; }
+    .amt { font-size: 10px; }
+    .detail-btn { font-size: 8px; padding: 3px 6px; border-radius: 6px; }
+    
+    .pagination { padding: 6px; gap: 2px; }
+    .pagination button { padding: 3px 6px; font-size: 9px; border-radius: 5px; }
+    
+    .modal-box { padding: 16px; border-radius: 16px; margin: 10px; }
+    .modal-box h3 { font-size: 14px; }
+    .modal-meta { font-size: 11px; gap: 8px; }
+    .modal-item { font-size: 12px; padding: 8px 0; }
+    
+    .last-update { font-size: 10px; padding: 10px; }
+}
     </style>
 </head>
 <body>
