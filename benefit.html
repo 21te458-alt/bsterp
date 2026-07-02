@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>利益管理 - 订单利润计算</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Inter',sans-serif;background:#f0f2f5;padding:24px}
+        .container{max-width:1400px;margin:0 auto}
+        .header{background:linear-gradient(135deg,#1a1a2e,#16213e);color:white;padding:20px 28px;border-radius:16px 16px 0 0}
+        .header h1{font-size:1.6rem;display:flex;align-items:center;gap:10px}
+        .header p{opacity:0.7;font-size:0.85rem;margin-top:6px}
+        .nav-links{margin-top:12px;display:flex;gap:20px;flex-wrap:wrap}
+        .nav-links a{color:white;text-decoration:none;opacity:0.7;font-size:0.85rem}
+        .nav-links a:hover,.nav-links a.active{opacity:1}
+        .order-form{background:white;border-radius:20px;padding:28px;margin-bottom:20px;box-shadow:0 4px 15px rgba(0,0,0,0.08);border:1px solid #eef2ff}
+        .form-title{font-size:20px;font-weight:700;margin-bottom:24px;border-left:4px solid #bf0000;padding-left:16px;color:#1a1a2e}
+        .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px}
+        .form-group{display:flex;flex-direction:column;gap:6px}
+        .form-group label{font-size:13px;font-weight:600;color:#475569}
+        .form-group label i{margin-right:6px;color:#bf0000}
+        .form-group input,.form-group select{padding:12px 14px;border:1px solid #e2e8f0;border-radius:12px;font-size:14px}
+        .form-group input:focus,.form-group select:focus{outline:none;border-color:#bf0000;box-shadow:0 0 0 2px rgba(191,0,0,0.1)}
+        .delivery-method{background:#fef3c7;border-radius:16px;padding:18px 24px;margin:24px 0;border:1px solid #fde68a}
+        .delivery-method label{margin-right:24px;cursor:pointer;font-size:14px;font-weight:500}
+        .delivery-method input[type="radio"]{margin-right:6px;cursor:pointer;accent-color:#bf0000}
+        .method-badge{display:inline-block;background:#e2e8f0;padding:2px 10px;border-radius:20px;font-size:11px;margin-left:12px;font-weight:500}
+        .shipping-section{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:24px 0}
+        @media (max-width:768px){.shipping-section{grid-template-columns:1fr}}
+        .shipping-card{background:#f8fafc;border-radius:16px;padding:20px;border:1px solid #e2e8f0}
+        .shipping-card h4{margin-bottom:16px;color:#1a1a2e;font-size:16px;font-weight:600;border-bottom:2px solid #bf0000;display:inline-block;padding-bottom:4px}
+        .shipping-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:15px}
+        .shipping-item{background:white;padding:12px 16px;border-radius:12px;border:1px solid #e2e8f0}
+        .shipping-item label{font-weight:600;display:block;margin-bottom:8px;font-size:12px;color:#64748b}
+        .shipping-item select{width:100%;padding:8px 12px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px}
+        .shipping-item .value{font-size:20px;font-weight:700;color:#bf0000;margin-top:10px;text-align:center}
+        .calc-result{background:#f8fafc;border-radius:16px;padding:24px;margin-top:24px;border:1px solid #e2e8f0}
+        .calc-result h4{margin-bottom:20px;color:#1a1a2e;font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px}
+        .calc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:15px}
+        .calc-item{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:white;border-radius:12px;border-left:3px solid #bf0000}
+        .calc-item .label{font-size:14px;color:#64748b;font-weight:500}
+        .calc-item .value{font-size:18px;font-weight:700;color:#1a1a2e}
+        .calc-item.highlight{border-left-color:#10b981;background:#ecfdf5}
+        .calc-item.highlight .value{color:#10b981;font-size:24px}
+        .btn-group{display:flex;gap:12px;margin-top:28px;justify-content:flex-end}
+        .btn{padding:12px 28px;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:8px}
+        .btn-primary{background:#bf0000;color:white}
+        .btn-primary:hover{background:#8b0000}
+        .btn-success{background:#10b981;color:white}
+        .btn-success:hover{background:#059669}
+        .btn-danger{background:#ef4444;color:white}
+        .btn-danger:hover{background:#dc2626}
+        .formula-note{background:#fef3c7;padding:12px 18px;border-radius:12px;margin-top:20px;font-size:12px;color:#92400e;display:flex;align-items:center;gap:8px}
+        .toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:white;padding:12px 24px;border-radius:12px;z-index:2000;animation:fadeOut 3s}
+        @keyframes fadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0;visibility:hidden}}
+        .footer{text-align:center;padding:20px;color:#94a3b8;font-size:12px}
+        @media (max-width:768px){body{padding:16px}.form-grid{grid-template-columns:1fr}.calc-grid{grid-template-columns:1fr}.btn-group{flex-direction:column}.btn-group button{width:100%;justify-content:center}}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1><i class="fas fa-calculator"></i> 利益管理系统</h1>
+        <p>宅急便/ネコポス | 运费利益自动计算 | 8カテゴリ分类</p>
+        <div class="nav-links">
+            <a href="/products">📋 商品管理</a>
+            <a href="/inventory">📊 在庫管理</a>
+            <a href="/orders">🛒 贩卖信息</a>
+            <a href="/benefit" class="active">💰 利益管理</a>
+            <a href="/daily-summary">📈 每日总结</a>
+        </div>
+    </div>
+    <div class="order-form">
+        <div class="form-title"><i class="fas fa-chart-line"></i> 利益计算</div>
+        <div class="form-grid">
+            <div class="form-group"><label><i class="fas fa-hashtag"></i> 受注番号</label><input type="text" id="orderNumber" placeholder="例: 406647-20260514-xxxxx"></div>
+            <div class="form-group"><label><i class="fas fa-calendar-alt"></i> 注文確認日時</label><input type="datetime-local" id="orderDateTime"></div>
+            <div class="form-group"><label><i class="fas fa-barcode"></i> 商品管理番号</label><input type="text" id="manageNumber" placeholder="商品管理番号"></div>
+            <div class="form-group"><label><i class="fas fa-tag"></i> 商品名</label><input type="text" id="productName" placeholder="商品名"></div>
+            <div class="form-group"><label><i class="fas fa-folder"></i> カテゴリ</label>
+                <select id="category" onchange="calculateAll()">
+                    <option value="">选择</option>
+                    <option value="アニメ・グッズ（预售）">🎬 アニメ・グッズ（预售）</option>
+                    <option value="アニメ・グッズ（在库）">📦 アニメ・グッズ（在库）</option>
+                    <option value="食品・お菓子・天然生活">🌿 食品・お菓子・天然生活</option>
+                    <option value="健康食品">🍎 健康食品</option>
+                    <option value="美容・コスメ・ボディケア">💄 美容・コスメ・ボディケア</option>
+                    <option value="日用品雑貨">🏠 日用品雑貨</option>
+                    <option value="医薬品">💊 医薬品</option>
+                    <option value="水・ソフトドリンク">🥤 水・ソフトドリンク</option>
+                </select>
+            </div>
+            <div class="form-group"><label><i class="fas fa-boxes"></i> 個数</label><input type="number" id="quantity" value="1" min="1" onchange="calculateAll()"></div>
+            <div class="form-group"><label><i class="fas fa-arrow-down"></i> 仕入れ価格（税込）</label><input type="number" id="costPrice" placeholder="进货价格" step="1" value="0" oninput="calculateAll()"></div>
+            <div class="form-group"><label><i class="fas fa-arrow-up"></i> 贩卖价格（税込）</label><input type="number" id="salesPrice" placeholder="客户支付商品金额" step="1" value="0" oninput="calculateAll()"></div>
+        </div>
+        <div class="delivery-method">
+            <i class="fas fa-truck"></i> <strong style="margin-right:12px">发送方式：</strong>
+            <label><input type="radio" name="deliveryMethod" value="takkyubin" checked onchange="toggleDeliveryMethod()"> 📦 宅急便</label>
+            <label><input type="radio" name="deliveryMethod" value="nekopos" onchange="toggleDeliveryMethod()"> 📮 ネコポス</label>
+            <span id="methodHint" class="method-badge">宅急便</span>
+        </div>
+        <div id="takkyubinSection" class="shipping-section">
+            <div class="shipping-card"><h4><i class="fas fa-store"></i> 乐天运费报价</h4><div class="shipping-grid"><div class="shipping-item"><label><i class="fas fa-map-marker-alt"></i> 配送地区</label><select id="rakutenRegion" onchange="calculateAll()"><option value="北海道">北海道</option><option value="北东北">北东北</option><option value="南东北">南东北</option><option value="関東" selected>関東</option><option value="信越">信越</option><option value="北陸">北陸</option><option value="東海">東海</option><option value="関西">関西</option><option value="中国">中国</option><option value="四国">四国</option><option value="北九州">北九州</option><option value="南九州">南九州</option><option value="沖縄">沖縄</option></select></div><div class="shipping-item"><label><i class="fas fa-yen-sign"></i> 乐天运费</label><div class="value" id="rakutenShippingDisplay">¥500</div></div></div></div>
+            <div class="shipping-card"><h4><i class="fas fa-cat"></i> 黑猫实际运费</h4><div class="shipping-grid"><div class="shipping-item"><label><i class="fas fa-cube"></i> 尺寸</label><select id="sizeSelect" onchange="calculateAll()"><option value="60">60サイズ</option><option value="80">80サイズ</option></select></div><div class="shipping-item"><label><i class="fas fa-map-marker-alt"></i> 配送地区</label><select id="blackcatRegion" onchange="calculateAll()"><option value="北海道">北海道</option><option value="北东北">北东北</option><option value="南东北">南东北</option><option value="關東" selected>關東</option><option value="信越">信越</option><option value="北陸">北陸</option><option value="中部">中部</option><option value="關西">關西</option><option value="中国">中国</option><option value="四国">四国</option><option value="九州">九州</option><option value="沖縄">沖縄</option></select></div><div class="shipping-item"><label><i class="fas fa-yen-sign"></i> 黑猫运费</label><div class="value" id="blackcatShippingDisplay">¥495</div></div></div></div>
+        </div>
+        <div id="nekoposSection" class="shipping-section" style="display:none">
+            <div class="shipping-card"><h4><i class="fas fa-store"></i> 乐天运费报价</h4><div class="shipping-grid"><div class="shipping-item"><label><i class="fas fa-envelope"></i> 发送方式</label><div class="value" style="background:#ecfdf5;color:#10b981">ネコポス</div></div><div class="shipping-item"><label><i class="fas fa-yen-sign"></i> 乐天运费</label><div class="value" id="nekoposRakutenDisplay">¥200</div></div></div></div>
+            <div class="shipping-card"><h4><i class="fas fa-cat"></i> 黑猫实际运费</h4><div class="shipping-grid"><div class="shipping-item"><label><i class="fas fa-envelope"></i> 发送方式</label><div class="value" style="background:#fff3e0;color:#f59e0b">ネコポス</div></div><div class="shipping-item"><label><i class="fas fa-yen-sign"></i> 实际运费</label><div class="value" id="nekoposActualDisplay">¥198</div></div></div></div>
+        </div>
+        <div class="calc-result">
+            <h4><i class="fas fa-chart-simple"></i> 利益计算</h4>
+            <div class="calc-grid">
+                <div class="calc-item"><span class="label">① 贩卖价格</span><span class="value" id="displaySalesPrice">¥0</span></div>
+                <div class="calc-item"><span class="label">② 乐天运费</span><span class="value" id="displayRakutenShipping">¥0</span></div>
+                <div class="calc-item"><span class="label">③ 小计</span><span class="value" id="subtotal">¥0</span></div>
+                <div class="calc-item"><span class="label">④ 仕入れ価格</span><span class="value" id="displayCostPrice">¥0</span></div>
+                <div class="calc-item"><span class="label">⑤ 实际运费</span><span class="value" id="shippingCost">¥0</span></div>
+                <div class="calc-item"><span class="label">⑥ 运费利益</span><span class="value" id="shippingProfit">¥0</span></div>
+                <div class="calc-item highlight"><span class="label">🎯 最终利益</span><span class="value" id="profit">¥0</span></div>
+            </div>
+            <div class="formula-note"><i class="fas fa-lightbulb"></i> 最终利益 = (贩卖价格 + 乐天运费) - 仕入れ価格 - 实际运费 | 食品・お菓子・天然生活/健康食品/美容・コスメ/日用品雑貨/医薬品/水・ソフトドリンク运费为0</div>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="calculateAll()"><i class="fas fa-calculator"></i> 重新计算</button>
+            <button class="btn btn-success" onclick="saveOrder()"><i class="fas fa-save"></i> 保存订单</button>
+            <button class="btn btn-danger" onclick="clearForm()"><i class="fas fa-trash-alt"></i> 清空表单</button>
+        </div>
+    </div>
+    <div class="footer"><p><i class="fas fa-chart-line"></i> 实时计算运费利益 | 支持宅急便/ネコポス | 8カテゴリ分类</p></div>
+</div>
+<script>
+    const rakutenRates={'北海道':900,'北东北':600,'南东北':500,'関東':500,'信越':500,'北陸':500,'東海':500,'関西':600,'中国':700,'四国':700,'北九州':900,'南九州':900,'沖縄':2460};
+    const blackcatRates={60:{'北海道':650,'北东北':450,'南东北':400,'關東':400,'信越':400,'北陸':400,'中部':400,'關西':450,'中国':500,'四国':500,'九州':650,'沖縄':1320},80:{'北海道':800,'北东北':510,'南东北':450,'關東':450,'信越':450,'北陸':450,'中部':450,'關西':550,'中国':650,'四国':650,'九州':800,'沖縄':1880}};
+    const freeShippingCategories=['食品・お菓子・天然生活','健康食品','美容・コスメ・ボディケア','日用品雑貨','医薬品','水・ソフトドリンク'];
+    function getRakutenShipping(){const cat=document.getElementById('category').value;if(freeShippingCategories.includes(cat))return 0;if(document.querySelector('input[name="deliveryMethod"]:checked').value==='nekopos')return 200;return rakutenRates[document.getElementById('rakutenRegion').value]||500}
+    function getActualShipping(){const cat=document.getElementById('category').value;if(freeShippingCategories.includes(cat))return 0;if(document.querySelector('input[name="deliveryMethod"]:checked').value==='nekopos')return 198;const size=document.getElementById('sizeSelect').value,region=document.getElementById('blackcatRegion').value,rate=blackcatRates[size];return rate&&rate[region]?Math.round(rate[region]*1.1):0}
+    function calculateAll(){const sales=parseInt(document.getElementById('salesPrice').value)||0,rakuten=getRakutenShipping(),cost=parseInt(document.getElementById('costPrice').value)||0,actual=getActualShipping(),subtotal=sales+rakuten,shippingProfit=rakuten-actual,profit=subtotal-cost-actual;
+        document.getElementById('displaySalesPrice').innerText='¥'+sales.toLocaleString();document.getElementById('displayRakutenShipping').innerText='¥'+rakuten.toLocaleString();document.getElementById('rakutenShippingDisplay').innerText='¥'+rakuten.toLocaleString();document.getElementById('nekoposRakutenDisplay').innerText='¥200';document.getElementById('subtotal').innerText='¥'+subtotal.toLocaleString();document.getElementById('displayCostPrice').innerText='¥'+cost.toLocaleString();document.getElementById('shippingCost').innerText='¥'+actual.toLocaleString();document.getElementById('blackcatShippingDisplay').innerText='¥'+actual.toLocaleString();document.getElementById('nekoposActualDisplay').innerText='¥198';document.getElementById('shippingProfit').innerText='¥'+shippingProfit.toLocaleString();document.getElementById('profit').innerHTML='¥'+profit.toLocaleString();document.getElementById('profit').style.color=profit>=0?'#10b981':'#ef4444'}
+    function toggleDeliveryMethod(){const m=document.querySelector('input[name="deliveryMethod"]:checked').value;document.getElementById('takkyubinSection').style.display=m==='takkyubin'?'grid':'none';document.getElementById('nekoposSection').style.display=m==='nekopos'?'grid':'none';document.getElementById('methodHint').innerHTML=m==='takkyubin'?'📦 宅急便':'📮 ネコポス';calculateAll()}
+    function saveOrder(){const orderNumber=document.getElementById('orderNumber').value,orderDateTime=document.getElementById('orderDateTime').value;if(!orderNumber||!orderDateTime){alert('请填写受注番号和注文確認日時');return}showToast('✅ 订单已保存！');clearForm()}
+    function clearForm(){document.getElementById('orderNumber').value='';document.getElementById('orderDateTime').value='';document.getElementById('manageNumber').value='';document.getElementById('productName').value='';document.getElementById('category').value='';document.getElementById('costPrice').value='0';document.getElementById('salesPrice').value='0';document.getElementById('quantity').value='1';document.getElementById('rakutenRegion').value='関東';document.getElementById('sizeSelect').value='60';document.getElementById('blackcatRegion').value='關東';document.querySelector('input[value="takkyubin"]').checked=true;toggleDeliveryMethod();calculateAll()}
+    function showToast(msg){const t=document.createElement('div');t.className='toast';t.innerHTML='<i class="fas fa-check-circle"></i> '+msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3000)}
+    calculateAll();
+</script>
+</body>
+</html>

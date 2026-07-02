@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在庫管理</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Inter',sans-serif;background:#f4f6fb;padding:20px;min-height:100vh}
+        .container{max-width:1400px;margin:auto;display:flex;flex-direction:column;gap:16px}
+
+        /* Header */
+        .header{background:linear-gradient(135deg,#1a1a2e,#16213e);color:white;padding:20px 28px;border-radius:16px}
+        .header h1{font-size:1.5rem;display:flex;align-items:center;gap:10px}
+        .header p{opacity:0.65;font-size:0.82rem;margin-top:5px}
+        .nav-links{margin-top:12px;display:flex;gap:20px;flex-wrap:wrap}
+        .nav-links a{color:white;text-decoration:none;opacity:0.65;font-size:0.82rem;transition:opacity 0.2s}
+        .nav-links a:hover,.nav-links a.active{opacity:1}
+
+        /* KPI */
+        .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+        @media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+        .stat-card{background:white;border-radius:16px;padding:16px 20px;border:1px solid #eef2ff;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+        .stat-title{font-size:12px;color:#64748b;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+        .stat-value{font-size:26px;font-weight:800;color:#1e293b}
+
+        /* Main layout: left table + right outstock panel */
+        .main-layout{display:grid;grid-template-columns:1fr 420px;gap:16px;align-items:start}
+        @media(max-width:1100px){.main-layout{grid-template-columns:1fr}}
+
+        /* Inventory table panel */
+        .panel{background:white;border-radius:16px;border:1px solid #eef2ff;overflow:hidden}
+        .panel-header{padding:14px 18px;border-bottom:1px solid #eef2ff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+        .panel-title{font-size:15px;font-weight:700;color:#1e293b;display:flex;align-items:center;gap:8px}
+        .filters{display:flex;gap:8px;flex-wrap:wrap}
+        .search-box{display:flex;align-items:center;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;padding:0 10px;gap:6px}
+        .search-box input{border:none;background:transparent;padding:8px 4px;width:160px;outline:none;font-size:13px}
+        .filter-select{padding:8px 12px;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;background:white;color:#374151}
+        .btn{padding:8px 16px;border:none;border-radius:10px;cursor:pointer;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s}
+        .btn-primary{background:#bf0000;color:white}
+        .btn-primary:hover{background:#8b0000}
+
+        /* Resizable table area */
+        .table-area{overflow:auto;resize:vertical;min-height:200px;max-height:80vh;height:420px}
+        table{width:100%;border-collapse:collapse;min-width:600px}
+        th{background:#111827;color:white;padding:10px 12px;text-align:left;font-size:11px;font-weight:600;position:sticky;top:0;z-index:1;white-space:nowrap}
+        td{padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:12px;vertical-align:middle}
+        tr:hover td{background:#f8fafc}
+        .category-badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap}
+        .category-preorder{background:#8b5cf6;color:white}
+        .category-instock{background:#3b82f6;color:white}
+        .category-food{background:#10b981;color:white}
+        .category-health{background:#ef4444;color:white}
+        .category-beauty{background:#ec4899;color:white}
+        .category-daily{background:#f59e0b;color:white}
+        .category-medicine{background:#8b5cf6;color:white}
+        .category-drink{background:#06b6d4;color:white}
+        .category-other{background:#6b7280;color:white}
+        .stock-badge{padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600}
+        .stock-high{background:#dcfce7;color:#166534}
+        .stock-low{background:#fed7aa;color:#9a3412}
+        .stock-zero{background:#fee2e2;color:#b91c1c}
+        .action-btn{padding:4px 10px;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;background:#ef4444;color:white}
+        .action-btn:hover{background:#dc2626}
+
+        /* Pagination */
+        .pagination{display:flex;justify-content:center;gap:4px;padding:10px;border-top:1px solid #eef2ff;flex-wrap:wrap}
+        .page-btn{padding:5px 10px;border:1px solid #e2e8f0;background:white;cursor:pointer;border-radius:7px;font-size:12px}
+        .page-btn:hover{background:#f1f5f9;border-color:#bf0000}
+        .page-btn.active{background:#bf0000;color:white;border-color:#bf0000}
+        .page-btn:disabled{opacity:0.4;cursor:default}
+
+        /* Outstock panel */
+        .outstock-panel{background:white;border-radius:16px;border:1px solid #eef2ff;overflow:hidden;display:flex;flex-direction:column}
+        .outstock-header{padding:14px 18px;border-bottom:1px solid #eef2ff}
+        .outstock-title{font-size:15px;font-weight:700;color:#1e293b;display:flex;align-items:center;gap:8px;margin-bottom:10px}
+
+        /* Tabs */
+        .tabs{display:flex;gap:0;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden}
+        .tab{flex:1;padding:7px 4px;border:none;background:#f8fafc;cursor:pointer;font-size:11px;font-weight:600;color:#64748b;transition:all 0.2s;text-align:center}
+        .tab.active{background:#bf0000;color:white}
+        .tab:hover:not(.active){background:#f1f5f9}
+
+        /* Outstock summary bar */
+        .outstock-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 18px;border-bottom:1px solid #eef2ff;background:#fafafa}
+        .summary-item{text-align:center}
+        .summary-label{font-size:10px;color:#64748b;margin-bottom:2px}
+        .summary-value{font-size:16px;font-weight:800;color:#1e293b}
+
+        /* Resizable outstock list */
+        .outstock-body{overflow:auto;resize:vertical;min-height:150px;max-height:70vh;height:360px}
+
+        /* Detail list */
+        .record-item{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 18px;border-bottom:1px solid #f1f5f9;gap:8px}
+        .record-item:hover{background:#fafafa}
+        .record-name{font-size:12px;font-weight:600;color:#1e293b;line-height:1.4;margin-bottom:3px}
+        .record-meta{font-size:10px;color:#94a3b8;display:flex;gap:8px;flex-wrap:wrap}
+        .record-qty{font-size:14px;font-weight:700;color:#ef4444;white-space:nowrap}
+
+        /* Product summary list */
+        .prod-item{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;border-bottom:1px solid #f1f5f9;gap:8px}
+        .prod-item:hover{background:#fafafa}
+        .prod-name{font-size:12px;font-weight:600;color:#1e293b;line-height:1.4;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .prod-stats{display:flex;gap:12px;align-items:center;white-space:nowrap}
+        .prod-count{font-size:13px;font-weight:700;color:#ef4444}
+        .prod-orders{font-size:10px;color:#94a3b8}
+
+        /* Day summary list */
+        .day-item{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;border-bottom:1px solid #f1f5f9}
+        .day-item:hover{background:#fafafa}
+        .day-date{font-size:13px;font-weight:600;color:#1e293b}
+        .day-bar-wrap{flex:1;margin:0 12px;height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden}
+        .day-bar{height:100%;background:#ef4444;border-radius:3px}
+        .day-stats{display:flex;gap:10px;align-items:center;white-space:nowrap}
+        .day-qty{font-size:13px;font-weight:700;color:#ef4444}
+        .day-orders{font-size:10px;color:#94a3b8}
+
+        /* Loading */
+        .loading{text-align:center;padding:40px;color:#64748b}
+        .spinner{width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:#bf0000;border-radius:50%;animation:spin 0.6s linear infinite;margin:0 auto 10px}
+        @keyframes spin{to{transform:rotate(360deg)}}
+
+        .empty{text-align:center;padding:40px 20px;color:#94a3b8;font-size:13px}
+        .footer{text-align:center;padding:12px;color:#94a3b8;font-size:11px}
+        .resize-hint{text-align:right;font-size:10px;color:#cbd5e1;padding:4px 10px;border-top:1px solid #f1f5f9;cursor:ns-resize;user-select:none}
+        .resize-hint i{margin-right:4px}
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <h1><i class="fas fa-warehouse"></i> 在庫管理システム</h1>
+        <p>在庫一覧 | 出庫記録 | 8カテゴリ分類</p>
+        <div class="nav-links">
+            <a href="/products">📋 商品管理</a>
+            <a href="/inventory" class="active">📊 在庫管理</a>
+            <a href="/orders">🛒 贩卖信息</a>
+            <a href="/benefit">💰 利益管理</a>
+            <a href="/daily-summary">📈 每日总结</a>
+        </div>
+    </div>
+
+    <!-- KPI -->
+    <div class="stats-grid">
+        <div class="stat-card"><div class="stat-title"><i class="fas fa-boxes"></i> 総商品数</div><div class="stat-value" id="totalItems">-</div></div>
+        <div class="stat-card"><div class="stat-title"><i class="fas fa-cubes"></i> 総在庫数</div><div class="stat-value" id="totalStock">-</div></div>
+        <div class="stat-card"><div class="stat-title"><i class="fas fa-yen-sign"></i> 在庫総額</div><div class="stat-value" id="totalValue">-</div></div>
+        <div class="stat-card"><div class="stat-title"><i class="fas fa-exclamation-triangle"></i> 在庫不足</div><div class="stat-value" id="lowStockCount">-</div></div>
+    </div>
+
+    <!-- Main layout -->
+    <div class="main-layout">
+
+        <!-- Left: Inventory table -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title"><i class="fas fa-table" style="color:#bf0000"></i> 在庫一覧</div>
+                <div class="filters">
+                    <div class="search-box">
+                        <i class="fas fa-search" style="color:#94a3b8;font-size:12px"></i>
+                        <input type="text" id="searchInput" placeholder="商品名 / 管理番号..." onkeyup="applyFilters()">
+                    </div>
+                    <select id="categoryFilter" class="filter-select" onchange="applyFilters()">
+                        <option value="all">全カテゴリ</option>
+                        <option value="アニメ・グッズ（预售）">🎬 预售</option>
+                        <option value="アニメ・グッズ（在库）">📦 在库</option>
+                        <option value="食品・お菓子・天然生活">🌿 食品</option>
+                        <option value="健康食品">🍎 健康</option>
+                        <option value="美容・コスメ・ボディケア">💄 美容</option>
+                        <option value="日用品雑貨">🏠 日用品</option>
+                        <option value="医薬品">💊 医薬品</option>
+                        <option value="水・ソフトドリンク">🥤 飲料</option>
+                        <option value="その他">📦 その他</option>
+                    </select>
+                    <select id="sortSelect" class="filter-select" onchange="applyFilters()">
+                        <option value="name">名前順</option>
+                        <option value="stock_asc">在庫↑</option>
+                        <option value="stock_desc">在庫↓</option>
+                        <option value="price_asc">価格↑</option>
+                        <option value="price_desc">価格↓</option>
+                        <option value="value_desc">金額↓</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="loadInventory()"><i class="fas fa-sync-alt"></i> 更新</button>
+                </div>
+            </div>
+            <div class="table-area" id="tableArea">
+                <table id="inventoryTable">
+                    <thead><tr>
+                        <th>管理番号</th>
+                        <th>商品名</th>
+                        <th>カテゴリ</th>
+                        <th>単価</th>
+                        <th>在庫</th>
+                        <th>金額</th>
+                        <th>状態</th>
+                        <th>操作</th>
+                    </tr></thead>
+                    <tbody id="inventoryTableBody">
+                        <tr><td colspan="8" class="loading"><div class="spinner"></div>読込中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="resize-hint"><i class="fas fa-grip-lines"></i>ドラッグで高さ調整</div>
+            <div class="pagination" id="pagination"></div>
+        </div>
+
+        <!-- Right: Outstock panel -->
+        <div class="outstock-panel">
+            <div class="outstock-header">
+                <div class="outstock-title"><i class="fas fa-arrow-up" style="color:#ef4444"></i> 出庫記録（注文）</div>
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('detail')">明細</button>
+                    <button class="tab" onclick="switchTab('product')">商品別</button>
+                    <button class="tab" onclick="switchTab('day')">日別</button>
+                </div>
+            </div>
+            <div class="outstock-summary">
+                <div class="summary-item">
+                    <div class="summary-label">出庫件数（30日）</div>
+                    <div class="summary-value" id="outTotalQty">-</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">注文数（30日）</div>
+                    <div class="summary-value" id="outTotalOrders">-</div>
+                </div>
+            </div>
+            <div class="outstock-body" id="outstockBody">
+                <div class="loading"><div class="spinner"></div>読込中...</div>
+            </div>
+            <div class="resize-hint"><i class="fas fa-grip-lines"></i>ドラッグで高さ調整</div>
+        </div>
+
+    </div>
+
+    <div class="footer">最終更新: <span id="lastUpdate">-</span></div>
+</div>
+
+<script>
+    let allProducts = [], filteredProducts = [], currentPage = 1, itemsPerPage = 50;
+    let allRecords = [];
+    let currentTab = 'detail';
+
+    // ===== Category helpers =====
+    function getCategoryClass(c) {
+        const m = {
+            'アニメ・グッズ（预售）':'category-preorder','アニメ・グッズ（在库）':'category-instock',
+            '食品・お菓子・天然生活':'category-food','健康食品':'category-health',
+            '美容・コスメ・ボディケア':'category-beauty','日用品雑貨':'category-daily',
+            '医薬品':'category-medicine','水・ソフトドリンク':'category-drink','その他':'category-other'
+        };
+        return m[c] || 'category-other';
+    }
+    function getCategoryIcon(c) {
+        const m = {
+            'アニメ・グッズ（预售）':'🎬','アニメ・グッズ（在库）':'📦','食品・お菓子・天然生活':'🌿',
+            '健康食品':'🍎','美容・コスメ・ボディケア':'💄','日用品雑貨':'🏠',
+            '医薬品':'💊','水・ソフトドリンク':'🥤','その他':'📦'
+        };
+        return m[c] || '📦';
+    }
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+    }
+
+    // ===== Load inventory =====
+    async function loadInventory() {
+        document.getElementById('inventoryTableBody').innerHTML =
+            '<tr><td colspan="8" class="loading"><div class="spinner"></div>読込中...</td></tr>';
+        try {
+            const res = await fetch('/api/inventory/all');
+            allProducts = await res.json();
+            filteredProducts = [...allProducts];
+            updateStats();
+            applyFilters();
+            await syncRecords();
+            await loadRecords();
+            document.getElementById('lastUpdate').innerText = new Date().toLocaleString();
+        } catch (e) {
+            document.getElementById('inventoryTableBody').innerHTML =
+                `<tr><td colspan="8" style="color:red;text-align:center;padding:30px">読込失敗: ${e.message}</td></tr>`;
+        }
+    }
+
+    async function syncRecords() {
+        try { await fetch('/api/sync-outstock-from-orders', { method: 'POST' }); } catch(e) {}
+    }
+
+    // ===== Stats =====
+    function updateStats() {
+        let totalStock = 0, totalValue = 0, lowStock = 0;
+        for (let p of allProducts) {
+            let s = p.stock || 0;
+            totalStock += s;
+            totalValue += (p.price || 0) * s;
+            if (s > 0 && s < 10) lowStock++;
+        }
+        document.getElementById('totalItems').innerText = allProducts.length.toLocaleString();
+        document.getElementById('totalStock').innerText = totalStock.toLocaleString();
+        document.getElementById('totalValue').innerText = '¥' + totalValue.toLocaleString();
+        document.getElementById('lowStockCount').innerText = lowStock;
+    }
+
+    // ===== Filters =====
+    function applyFilters() {
+        let f = [...allProducts];
+        let s = document.getElementById('searchInput').value.toLowerCase();
+        if (s) f = f.filter(p => (p.manageNumber||'').toLowerCase().includes(s) || (p.name||'').toLowerCase().includes(s));
+        let c = document.getElementById('categoryFilter').value;
+        if (c !== 'all') f = f.filter(p => p.category === c);
+        let sort = document.getElementById('sortSelect').value;
+        if (sort === 'price_asc') f.sort((a,b) => (a.price||0)-(b.price||0));
+        else if (sort === 'price_desc') f.sort((a,b) => (b.price||0)-(a.price||0));
+        else if (sort === 'stock_asc') f.sort((a,b) => (a.stock||0)-(b.stock||0));
+        else if (sort === 'stock_desc') f.sort((a,b) => (b.stock||0)-(a.stock||0));
+        else if (sort === 'value_desc') f.sort((a,b) => ((b.price||0)*(b.stock||0))-((a.price||0)*(a.stock||0)));
+        else f.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+        filteredProducts = f;
+        currentPage = 1;
+        renderTable();
+    }
+
+    // ===== Render table =====
+    function renderTable() {
+        let tbody = document.getElementById('inventoryTableBody');
+        let start = (currentPage - 1) * itemsPerPage;
+        let page = filteredProducts.slice(start, start + itemsPerPage);
+        if (!page.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty">該当データなし</td></tr>';
+            renderPagination(0); return;
+        }
+        tbody.innerHTML = page.map(p => {
+            let s = p.stock || 0, v = (p.price||0)*s;
+            let badge = s===0 ? 'stock-zero' : s<10 ? 'stock-low' : 'stock-high';
+            let txt   = s===0 ? '欠品' : s<10 ? '不足' : '充足';
+            return `<tr>
+                <td style="font-family:monospace;font-size:11px">${escapeHtml(p.manageNumber)}</td>
+                <td style="max-width:200px;word-break:break-all;line-height:1.4">${escapeHtml(p.name)}</td>
+                <td><span class="category-badge ${getCategoryClass(p.category)}">${getCategoryIcon(p.category)}</span></td>
+                <td>¥${(p.price||0).toLocaleString()}</td>
+                <td style="font-weight:700">${s}</td>
+                <td>¥${v.toLocaleString()}</td>
+                <td><span class="stock-badge ${badge}">${txt}</span></td>
+                <td><button class="action-btn" onclick="showOutStockModal('${p.manageNumber}','${escapeHtml(p.name).replace(/'/g,"\\'")}',${s})">出庫</button></td>
+            </tr>`;
+        }).join('');
+        renderPagination(filteredProducts.length);
+    }
+
+    function renderPagination(total) {
+        let pages = Math.ceil(total / itemsPerPage);
+        let div = document.getElementById('pagination');
+        if (pages <= 1) { div.innerHTML = ''; return; }
+        let s = Math.max(1, currentPage-2), e = Math.min(pages, currentPage+2);
+        let html = `<button class="page-btn" onclick="changePage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+        if (s>1) { html+=`<button class="page-btn" onclick="changePage(1)">1</button>`; if(s>2) html+='<span style="padding:0 4px">…</span>'; }
+        for (let i=s;i<=e;i++) html+=`<button class="page-btn ${i===currentPage?'active':''}" onclick="changePage(${i})">${i}</button>`;
+        if (e<pages) { if(e<pages-1) html+='<span style="padding:0 4px">…</span>'; html+=`<button class="page-btn" onclick="changePage(${pages})">${pages}</button>`; }
+        html+=`<button class="page-btn" onclick="changePage(${currentPage+1})" ${currentPage===pages?'disabled':''}>›</button>`;
+        div.innerHTML = html;
+    }
+
+    function changePage(p) {
+        if (p < 1 || p > Math.ceil(filteredProducts.length/itemsPerPage)) return;
+        currentPage = p; renderTable();
+    }
+
+    // ===== Load outstock records =====
+    async function loadRecords() {
+        try {
+            const res = await fetch('/api/stock-records?limit=500');
+            const data = await res.json();
+            allRecords = (data.success && data.records) ? data.records : [];
+            updateOutstockSummary();
+            renderTab();
+        } catch(e) {
+            document.getElementById('outstockBody').innerHTML = '<div class="empty">読込失敗</div>';
+        }
+    }
+
+    function updateOutstockSummary() {
+        const totalQty = allRecords.reduce((sum, r) => sum + (r.quantity||0), 0);
+        const orderSet = new Set(allRecords.filter(r=>r.orderNumber).map(r=>r.orderNumber));
+        document.getElementById('outTotalQty').innerText = totalQty.toLocaleString();
+        document.getElementById('outTotalOrders').innerText = orderSet.size.toLocaleString();
+    }
+
+    // ===== Tabs =====
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab').forEach((el,i) => {
+            el.classList.toggle('active', ['detail','product','day'][i] === tab);
+        });
+        renderTab();
+    }
+
+    function renderTab() {
+        if (currentTab === 'detail') renderDetail();
+        else if (currentTab === 'product') renderProduct();
+        else renderDay();
+    }
+
+    // Tab 1: 明細
+    function renderDetail() {
+        const body = document.getElementById('outstockBody');
+        if (!allRecords.length) { body.innerHTML = '<div class="empty">出庫記録なし</div>'; return; }
+        body.innerHTML = allRecords.map(r => `
+            <div class="record-item">
+                <div style="flex:1;min-width:0">
+                    <div class="record-name">${escapeHtml(r.name)}</div>
+                    <div class="record-meta">
+                        <span>${r.timestamp||''}</span>
+                        ${r.orderNumber ? `<span style="color:#3b82f6">${r.orderNumber}</span>` : ''}
+                    </div>
+                </div>
+                <div class="record-qty">−${r.quantity||0}</div>
+            </div>`).join('');
+    }
+
+    // Tab 2: 商品別集計
+    function renderProduct() {
+        const body = document.getElementById('outstockBody');
+        if (!allRecords.length) { body.innerHTML = '<div class="empty">出庫記録なし</div>'; return; }
+        const map = {};
+        for (let r of allRecords) {
+            const key = r.manageNumber || r.name;
+            if (!map[key]) map[key] = { name: r.name, manageNumber: r.manageNumber, qty: 0, orders: new Set() };
+            map[key].qty += r.quantity || 0;
+            if (r.orderNumber) map[key].orders.add(r.orderNumber);
+        }
+        const sorted = Object.values(map).sort((a,b) => b.qty - a.qty);
+        const maxQty = sorted[0]?.qty || 1;
+        body.innerHTML = sorted.map(p => `
+            <div class="prod-item">
+                <div style="flex:1;min-width:0">
+                    <div class="prod-name" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</div>
+                    <div style="font-size:10px;color:#94a3b8;font-family:monospace">${p.manageNumber||''}</div>
+                    <div style="margin-top:5px;height:4px;background:#f1f5f9;border-radius:2px;overflow:hidden">
+                        <div style="height:100%;background:#ef4444;border-radius:2px;width:${Math.round(p.qty/maxQty*100)}%"></div>
+                    </div>
+                </div>
+                <div class="prod-stats">
+                    <div>
+                        <div class="prod-count">${p.qty}</div>
+                        <div class="prod-orders">${p.orders.size}注文</div>
+                    </div>
+                </div>
+            </div>`).join('');
+    }
+
+    // Tab 3: 日別集計
+    function renderDay() {
+        const body = document.getElementById('outstockBody');
+        if (!allRecords.length) { body.innerHTML = '<div class="empty">出庫記録なし</div>'; return; }
+        const map = {};
+        for (let r of allRecords) {
+            const day = (r.timestamp||'').slice(0,10);
+            if (!day) continue;
+            if (!map[day]) map[day] = { qty: 0, orders: new Set() };
+            map[day].qty += r.quantity || 0;
+            if (r.orderNumber) map[day].orders.add(r.orderNumber);
+        }
+        const sorted = Object.entries(map).sort((a,b) => b[0].localeCompare(a[0]));
+        const maxQty = Math.max(...sorted.map(([,v])=>v.qty), 1);
+        body.innerHTML = sorted.map(([day, v]) => {
+            const d = new Date(day);
+            const label = `${d.getMonth()+1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）`;
+            return `<div class="day-item">
+                <div class="day-date">${label}</div>
+                <div class="day-bar-wrap"><div class="day-bar" style="width:${Math.round(v.qty/maxQty*100)}%"></div></div>
+                <div class="day-stats">
+                    <div class="day-qty">${v.qty}件</div>
+                    <div class="day-orders">${v.orders.size}注文</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ===== Manual outstock =====
+    async function showOutStockModal(id, name, currentStock) {
+        if (currentStock <= 0) { alert(`❌ ${name}\n在庫なし`); return; }
+        let qty = prompt(`出庫処理\n商品: ${name}\n現在庫: ${currentStock}\n出庫数量:`, 1);
+        if (!qty) return;
+        let num = parseInt(qty);
+        if (isNaN(num) || num <= 0) return;
+        if (num > currentStock) { alert(`❌ 在庫不足（現在: ${currentStock}）`); return; }
+        try {
+            const res = await fetch('/api/outstock', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ manageNumber: id, quantity: num, note: '手動出庫' })
+            });
+            const result = await res.json();
+            if (result.success) {
+                await loadInventory();
+                alert(`✅ ${name}\n${num}個出庫 → 残庫: ${result.newStock}`);
+            } else {
+                alert(`❌ 出庫失敗: ${result.error}`);
+            }
+        } catch(e) { alert(`❌ 出庫失敗: ${e.message}`); }
+    }
+
+    loadInventory();
+</script>
+</body>
+</html>

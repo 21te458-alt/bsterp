@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>乐天店铺 - 商品管理</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Inter',sans-serif;background:#f0f2f5;padding:24px}
+        .container{max-width:1600px;margin:0 auto}
+        .header{background:linear-gradient(135deg,#1a1a2e,#16213e);color:white;padding:20px 28px;border-radius:16px 16px 0 0}
+        .header h1{font-size:1.6rem;display:flex;align-items:center;gap:10px}
+        .header p{opacity:0.7;font-size:0.85rem;margin-top:6px}
+        .nav-links{margin-top:12px;display:flex;gap:20px;flex-wrap:wrap}
+        .nav-links a{color:white;text-decoration:none;opacity:0.7;font-size:0.85rem}
+        .nav-links a:hover,.nav-links a.active{opacity:1}
+        .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin:20px 0}
+        @media (max-width:1200px){.stats-grid{grid-template-columns:repeat(3,1fr)}}
+        @media (max-width:768px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+        .stat-card{background:white;border-radius:16px;padding:16px;text-align:center;box-shadow:0 4px 15px rgba(0,0,0,0.08);border:1px solid #eef2ff}
+        .stat-card:hover{transform:translateY(-3px)}
+        .stat-icon{font-size:28px;margin-bottom:8px}
+        .stat-number{font-size:24px;font-weight:700;color:#bf0000}
+        .stat-label{color:#64748b;font-size:11px;margin-top:5px;font-weight:500}
+        .toolbar{background:white;padding:16px 24px;border-radius:16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;border:1px solid #eef2ff}
+        .search-box{display:flex;gap:10px;flex:1;max-width:400px}
+        .search-box input{flex:1;padding:10px 16px;border:1px solid #e2e8f0;border-radius:12px;font-size:14px;outline:none}
+        .search-box input:focus{border-color:#bf0000}
+        .btn{padding:10px 24px;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:8px}
+        .btn-primary{background:#bf0000;color:white}
+        .btn-primary:hover{background:#8b0000}
+        .btn-success{background:#10b981;color:white}
+        .btn-success:hover{background:#059669}
+        .table-wrapper{background:white;border-radius:16px;overflow:hidden;border:1px solid #eef2ff}
+        table{width:100%;border-collapse:collapse}
+        th,td{padding:14px 12px;text-align:left;border-bottom:1px solid #f1f5f9}
+        th{background:#f8fafc;font-weight:600;color:#475569;position:sticky;top:0;cursor:pointer;font-size:13px}
+        th:hover{background:#f1f5f9}
+        tr:hover{background:#faf5ff}
+        .category-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+        .category-preorder{background:#8b5cf6;color:white}
+        .category-instock{background:#3b82f6;color:white}
+        .category-food{background:#10b981;color:white}
+        .category-health{background:#ef4444;color:white}
+        .category-beauty{background:#ec4899;color:white}
+        .category-daily{background:#f59e0b;color:white}
+        .category-medicine{background:#8b5cf6;color:white}
+        .category-drink{background:#06b6d4;color:white}
+        .category-other{background:#6b7280;color:white}
+        .pagination{display:flex;justify-content:center;gap:8px;padding:20px;background:white;border-top:1px solid #eef2ff}
+        .page-btn{padding:8px 14px;border:1px solid #e2e8f0;background:white;cursor:pointer;border-radius:10px;font-size:13px}
+        .page-btn:hover{background:#f1f5f9;border-color:#bf0000}
+        .page-btn.active{background:#bf0000;color:white;border-color:#bf0000}
+        .loading{text-align:center;padding:60px;color:#64748b}
+        .spinner{width:40px;height:40px;border:3px solid #e2e8f0;border-top:3px solid #bf0000;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 15px}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .footer{text-align:center;padding:20px;color:#94a3b8;font-size:12px}
+        @media (max-width:768px){body{padding:16px}.toolbar{flex-direction:column;align-items:stretch}.search-box{max-width:none}th,td{padding:8px;font-size:12px}.category-badge{font-size:9px;padding:2px 6px}}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1><i class="fas fa-box"></i> 商品管理</h1>
+        <p>商品一覧 | 8カテゴリ分類 | CSV导出</p>
+        <div class="nav-links">
+            <a href="/products" class="active">📋 商品管理</a>
+            <a href="/inventory">📊 在庫管理</a>
+            <a href="/orders">🛒 贩卖信息</a>
+            <a href="/benefit">💰 利益管理</a>
+            <a href="/daily-summary">📈 每日总结</a>
+        </div>
+    </div>
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><div class="stat-icon">🎬</div><div class="stat-number" id="preorderCount">-</div><div class="stat-label">アニメ（预售）</div></div>
+        <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-number" id="instockCount">-</div><div class="stat-label">アニメ（在库）</div></div>
+        <div class="stat-card"><div class="stat-icon">🌿</div><div class="stat-number" id="foodCount">-</div><div class="stat-label">食品・お菓子・天然生活</div></div>
+        <div class="stat-card"><div class="stat-icon">🍎</div><div class="stat-number" id="healthCount">-</div><div class="stat-label">健康食品</div></div>
+        <div class="stat-card"><div class="stat-icon">💄</div><div class="stat-number" id="beautyCount">-</div><div class="stat-label">美容・コスメ</div></div>
+        <div class="stat-card"><div class="stat-icon">🏠</div><div class="stat-number" id="dailyCount">-</div><div class="stat-label">日用品雑貨</div></div>
+        <div class="stat-card"><div class="stat-icon">💊</div><div class="stat-number" id="medicineCount">-</div><div class="stat-label">医薬品</div></div>
+        <div class="stat-card"><div class="stat-icon">🥤</div><div class="stat-number" id="drinkCount">-</div><div class="stat-label">水・ソフトドリンク</div></div>
+        <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-number" id="otherCount">-</div><div class="stat-label">その他</div></div>
+    </div>
+    <div class="toolbar">
+        <div class="search-box"><input type="text" id="searchInput" placeholder="🔍 搜索商品名称或管理番号..." onkeyup="searchProducts()"></div>
+        <div style="display:flex;gap:12px"><button class="btn btn-primary" onclick="loadProducts()"><i class="fas fa-sync-alt"></i> 加载商品</button><button class="btn btn-success" onclick="exportCSV()"><i class="fas fa-download"></i> 导出CSV</button></div>
+    </div>
+    <div class="table-wrapper">
+        <div style="overflow-x:auto;max-height:55vh">
+            <table id="productTable">
+                <thead><tr><th onclick="sortBy('manageNumber')">商品管理番号</th><th onclick="sortBy('name')">商品名称</th><th onclick="sortBy('price')">价格(日元)</th><th onclick="sortBy('category')">カテゴリ</th><th>销售状态</th></tr></thead>
+                <tbody id="productTableBody"><tr><td colspan="5" class="loading"><div class="spinner"></div>点击「加载商品」开始获取数据...</td></tr></tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+    </div>
+    <div class="footer"><p><i class="fas fa-database"></i> 数据来源：乐天RMS ItemAPI 2.0 | 8カテゴリ分类 | 最后更新：<span id="lastUpdate">-</span></p></div>
+</div>
+<script>
+    let allProducts = [], filteredProducts = [], currentPage = 1, itemsPerPage = 50, currentSort = { column: 'manageNumber', order: 'asc' }, currentSearch = '';
+    function getCategoryClass(category){
+        const map={'アニメ・グッズ（预售）':'category-preorder','アニメ・グッズ（在库）':'category-instock','食品・お菓子・天然生活':'category-food','健康食品':'category-health','美容・コスメ・ボディケア':'category-beauty','日用品雑貨':'category-daily','医薬品':'category-medicine','水・ソフトドリンク':'category-drink','その他':'category-other'};
+        return map[category]||'category-other';
+    }
+    function getCategoryIcon(category){
+        const map={'アニメ・グッズ（预售）':'🎬','アニメ・グッズ（在库）':'📦','食品・お菓子・天然生活':'🌿','健康食品':'🍎','美容・コスメ・ボディケア':'💄','日用品雑貨':'🏠','医薬品':'💊','水・ソフトドリンク':'🥤','その他':'📦'};
+        return map[category]||'📦';
+    }
+    async function loadProducts(){
+        const tbody=document.getElementById('productTableBody');
+        tbody.innerHTML='<tr><td colspan="5" class="loading"><div class="spinner"></div>正在获取商品数据，请稍候...</td></tr>';
+        try{
+            const response=await fetch('/api/products');
+            if(!response.ok)throw new Error('网络错误');
+            allProducts=await response.json();
+            filteredProducts=[...allProducts];
+            if(allProducts.length===0){
+                tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:40px;">没有获取到商品数据</td></tr>';
+            }else{
+                updateStats();
+                renderProducts();
+                document.getElementById('lastUpdate').innerText=new Date().toLocaleString();
+            }
+        }catch(error){
+            tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:40px;color:#ef4444;">❌ 加载失败: ${error.message}</td></tr>`;
+        }
+    }
+    function updateStats(){
+        const counts={'アニメ・グッズ（预售）':0,'アニメ・グッズ（在库）':0,'食品・お菓子・天然生活':0,'健康食品':0,'美容・コスメ・ボディケア':0,'日用品雑貨':0,'医薬品':0,'水・ソフトドリンク':0,'その他':0};
+        for(let p of allProducts){const cat=p.category||'その他';if(counts[cat]!==undefined)counts[cat]++;else counts['その他']++;}
+        document.getElementById('preorderCount').innerText=counts['アニメ・グッズ（预售）'];
+        document.getElementById('instockCount').innerText=counts['アニメ・グッズ（在库）'];
+        document.getElementById('foodCount').innerText=counts['食品・お菓子・天然生活'];
+        document.getElementById('healthCount').innerText=counts['健康食品'];
+        document.getElementById('beautyCount').innerText=counts['美容・コスメ・ボディケア'];
+        document.getElementById('dailyCount').innerText=counts['日用品雑貨'];
+        document.getElementById('medicineCount').innerText=counts['医薬品'];
+        document.getElementById('drinkCount').innerText=counts['水・ソフトドリンク'];
+        document.getElementById('otherCount').innerText=counts['その他'];
+    }
+    function searchProducts(){currentSearch=document.getElementById('searchInput').value.toLowerCase();currentPage=1;renderProducts();}
+    function sortBy(column){if(currentSort.column===column){currentSort.order=currentSort.order==='asc'?'desc':'asc';}else{currentSort.column=column;currentSort.order='asc';}renderProducts();}
+    function renderProducts(){
+        let filtered=[...allProducts];
+        if(currentSearch)filtered=filtered.filter(p=>(p.manageNumber||'').toLowerCase().includes(currentSearch)||(p.name||'').toLowerCase().includes(currentSearch));
+        filtered.sort((a,b)=>{let va=a[currentSort.column],vb=b[currentSort.column];if(currentSort.column==='price'){va=parseFloat(va)||0;vb=parseFloat(vb)||0;}if(typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase();}if(va<vb)return currentSort.order==='asc'?-1:1;if(va>vb)return currentSort.order==='asc'?1:-1;return 0;});
+        filteredProducts=filtered;
+        displayTable(filtered);
+        renderPagination(filtered.length);
+    }
+    function displayTable(products){
+        const tbody=document.getElementById('productTableBody');
+        const start=(currentPage-1)*itemsPerPage;
+        const pageProducts=products.slice(start,start+itemsPerPage);
+        if(pageProducts.length===0){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:40px;">没有匹配的商品</td></tr>';return;}
+        let html='';
+        for(let p of pageProducts){
+            const category=p.category||'その他';
+            html+=`<tr><td style="font-family:monospace;">${escapeHtml(p.manageNumber)}</td><td style="max-width:450px;word-break:break-word;">${escapeHtml(p.name)}</td><td style="font-weight:600;color:#bf0000;">¥${(p.price||0).toLocaleString()}</td><td><span class="category-badge ${getCategoryClass(category)}">${getCategoryIcon(category)} ${category}</span></td><td><span style="background:#28a745;color:white;padding:2px 8px;border-radius:4px;font-size:12px;">${escapeHtml(p.status||'贩售中')}</span></td></tr>`;
+        }
+        tbody.innerHTML=html;
+    }
+    function renderPagination(total){
+        const totalPages=Math.ceil(total/itemsPerPage);
+        const div=document.getElementById('pagination');
+        if(totalPages<=1){div.innerHTML='';return;}
+        let html=`<button class="page-btn" onclick="changePage(${currentPage-1})" ${currentPage===1?'disabled':''}><i class="fas fa-chevron-left"></i> 上一页</button>`;
+        let startPage=Math.max(1,currentPage-2),endPage=Math.min(totalPages,currentPage+2);
+        if(startPage>1){html+=`<button class="page-btn" onclick="changePage(1)">1</button>`;if(startPage>2)html+='<span style="padding:0 5px;color:#94a3b8;">...</span>';}
+        for(let i=startPage;i<=endPage;i++)html+=`<button class="page-btn ${i===currentPage?'active':''}" onclick="changePage(${i})">${i}</button>`;
+        if(endPage<totalPages){if(endPage<totalPages-1)html+='<span style="padding:0 5px;color:#94a3b8;">...</span>';html+=`<button class="page-btn" onclick="changePage(${totalPages})">${totalPages}</button>`;}
+        html+=`<button class="page-btn" onclick="changePage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>下一页 <i class="fas fa-chevron-right"></i></button>`;
+        div.innerHTML=html;
+    }
+    function changePage(page){const total=Math.ceil(filteredProducts.length/itemsPerPage);if(page<1||page>total)return;currentPage=page;displayTable(filteredProducts);renderPagination(filteredProducts.length);}
+    function exportCSV(){
+        if(!filteredProducts.length){alert('没有数据可导出');return;}
+        let rows=[['商品管理番号','商品名称','价格(日元)','カテゴリ','销售状态']];
+        for(let p of filteredProducts)rows.push([p.manageNumber,p.name,p.price||0,p.category||'その他',p.status]);
+        let csv=rows.map(row=>row.join(',')).join('\n');
+        let blob=new Blob(["\uFEFF"+csv],{type:'text/csv;charset=utf-8'});
+        let link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`rakuten_products_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;link.click();URL.revokeObjectURL(link.href);
+        alert(`已导出 ${filteredProducts.length} 件商品`);
+    }
+    function escapeHtml(str){if(!str)return '';return str.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
+    loadProducts();
+</script>
+</body>
+</html>

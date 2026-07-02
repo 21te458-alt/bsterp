@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>每日数据总结 - 乐天店铺管理系统</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Inter',sans-serif;background:#eef2f5;padding:20px}
+        .container{max-width:1400px;margin:0 auto}
+        .header{background:linear-gradient(135deg,#0f172a,#1e293b);color:white;padding:24px 32px;border-radius:20px 20px 0 0}
+        .header h1{font-size:1.8rem;display:flex;align-items:center;gap:12px}
+        .header p{opacity:0.7;font-size:0.85rem;margin-top:8px}
+        .nav-links{margin-top:14px;display:flex;gap:24px;flex-wrap:wrap}
+        .nav-links a{color:white;text-decoration:none;opacity:0.7;font-size:0.85rem;display:inline-flex;align-items:center;gap:6px}
+        .nav-links a:hover,.nav-links a.active{opacity:1}
+        .filter-bar{background:white;border-radius:16px;padding:20px 24px;margin:20px 0;box-shadow:0 2px 8px rgba(0,0,0,0.04);display:flex;flex-wrap:wrap;gap:15px;align-items:flex-end;border:1px solid #e2e8f0}
+        .filter-group{display:flex;flex-direction:column;gap:6px}
+        .filter-group label{font-size:12px;font-weight:600;color:#475569}
+        .filter-group input,.filter-group select{padding:10px 14px;border:1px solid #e2e8f0;border-radius:12px;font-size:14px}
+        .btn{padding:10px 20px;border:none;border-radius:12px;font-weight:600;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;gap:8px;transition:all 0.2s}
+        .btn-primary{background:#dc2626;color:white}
+        .btn-primary:hover{background:#b91c1c}
+        .btn-outline{background:white;border:1px solid #e2e8f0;color:#475569}
+        .btn-outline:hover{background:#f8fafc}
+        .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:25px}
+        @media (max-width:1000px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+        @media (max-width:600px){.kpi-grid{grid-template-columns:1fr}}
+        .kpi-card{background:white;border-radius:20px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #e2e8f0;transition:all 0.2s}
+        .kpi-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,0.08)}
+        .kpi-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+        .kpi-icon{width:48px;height:48px;background:#fef2f2;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;color:#dc2626}
+        .kpi-value{font-size:32px;font-weight:800;color:#0f172a}
+        .kpi-label{font-size:13px;color:#64748b;margin-top:8px}
+        .section-title{font-size:18px;font-weight:700;margin:25px 0 15px;display:flex;align-items:center;gap:10px}
+        .section-title i{color:#dc2626}
+        .category-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:25px}
+        @media (max-width:1000px){.category-grid{grid-template-columns:repeat(2,1fr)}}
+        @media (max-width:600px){.category-grid{grid-template-columns:1fr}}
+        .category-card{background:white;border-radius:16px;padding:16px;border-left:4px solid;box-shadow:0 2px 8px rgba(0,0,0,0.04);transition:all 0.2s}
+        .category-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,0.08)}
+        .category-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+        .category-icon{font-size:28px}
+        .category-name{font-size:14px;font-weight:700}
+        .category-stats{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+        .category-count{font-size:24px;font-weight:800}
+        .category-percent{font-size:12px;color:#64748b}
+        .category-bar{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-top:8px}
+        .category-bar-fill{height:100%;border-radius:3px}
+        .two-columns{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:25px}
+        @media (max-width:768px){.two-columns{grid-template-columns:1fr}}
+        .info-card{background:white;border-radius:20px;padding:20px;border:1px solid #e2e8f0}
+        .info-card h3{font-size:16px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:2px solid #e2e8f0}
+        .info-card h3 i{color:#dc2626}
+        .stock-list{max-height:350px;overflow-y:auto}
+        .stock-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9}
+        .stock-info{flex:1}
+        .stock-name{font-size:13px;font-weight:500;margin-bottom:4px}
+        .stock-meta{font-size:11px;color:#64748b}
+        .stock-price{font-weight:700;color:#dc2626}
+        .loading{text-align:center;padding:60px;color:#64748b}
+        .spinner{width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#dc2626;border-radius:50%;animation:spin 0.6s linear infinite;margin:0 auto 15px}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .last-update{text-align:center;color:#94a3b8;font-size:12px;margin-top:20px;padding:16px}
+        .cat-preorder{border-left-color:#8b5cf6}.cat-preorder .category-bar-fill{background:#8b5cf6}
+        .cat-instock{border-left-color:#3b82f6}.cat-instock .category-bar-fill{background:#3b82f6}
+        .cat-food{border-left-color:#10b981}.cat-food .category-bar-fill{background:#10b981}
+        .cat-health{border-left-color:#ef4444}.cat-health .category-bar-fill{background:#ef4444}
+        .cat-beauty{border-left-color:#ec4899}.cat-beauty .category-bar-fill{background:#ec4899}
+        .cat-daily{border-left-color:#f59e0b}.cat-daily .category-bar-fill{background:#f59e0b}
+        .cat-medicine{border-left-color:#8b5cf6}.cat-medicine .category-bar-fill{background:#8b5cf6}
+        .cat-drink{border-left-color:#06b6d4}.cat-drink .category-bar-fill{background:#06b6d4}
+        .cat-other{border-left-color:#6b7280}.cat-other .category-bar-fill{background:#6b7280}
+
+        /* ===== 订单明细表格 ===== */
+        .orders-card{background:white;border-radius:20px;padding:20px;border:1px solid #e2e8f0;margin-bottom:25px}
+        .orders-toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px}
+        .orders-toolbar input{flex:1;min-width:180px;padding:10px 14px;border:1px solid #e2e8f0;border-radius:12px;font-size:14px}
+        .orders-count{font-size:12px;color:#64748b;white-space:nowrap}
+        table.orders-table{width:100%;border-collapse:collapse;font-size:13px}
+        table.orders-table th{text-align:left;padding:10px 12px;color:#475569;font-weight:700;border-bottom:2px solid #e2e8f0;cursor:pointer;white-space:nowrap;user-select:none}
+        table.orders-table th:hover{color:#dc2626}
+        table.orders-table td{padding:10px 12px;border-bottom:1px solid #f1f5f9}
+        table.orders-table tbody tr:hover{background:#fef2f2}
+        .order-num{font-family:monospace;font-size:12px}
+        .amt{font-weight:700;color:#bf0000}
+        .status-badge{display:inline-block;padding:4px 12px;border-radius:30px;font-size:11px;font-weight:600;white-space:nowrap}
+        .status-completed{background:#d1fae5;color:#065f46}
+        .status-shipped{background:#dbeafe;color:#1e40af}
+        .status-paid{background:#fef3c7;color:#92400e}
+        .status-pending{background:#ffe4e2;color:#b91c1c}
+        .category-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:30px;font-size:11px;font-weight:600;white-space:nowrap;color:white}
+        .category-preorder{background:#8b5cf6}.category-instock{background:#3b82f6}.category-food{background:#10b981}
+        .category-health{background:#ef4444}.category-beauty{background:#ec4899}.category-daily{background:#f59e0b}
+        .category-medicine{background:#8b5cf6}.category-drink{background:#06b6d4}.category-other{background:#6b7280}
+        .detail-btn{padding:6px 12px;border:1px solid #e2e8f0;border-radius:10px;background:white;color:#475569;font-size:12px;cursor:pointer}
+        .detail-btn:hover{background:#f8fafc;border-color:#dc2626;color:#dc2626}
+        .pagination{display:flex;justify-content:center;gap:6px;margin-top:16px;flex-wrap:wrap}
+        .pagination button{padding:6px 12px;border:1px solid #e2e8f0;border-radius:8px;background:white;cursor:pointer;font-size:12px}
+        .pagination button.active{background:#dc2626;color:white;border-color:#dc2626}
+        .pagination button:disabled{opacity:0.4;cursor:not-allowed}
+
+        /* ===== 订单明细模态框 ===== */
+        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,0.5);z-index:100;align-items:center;justify-content:center;padding:20px}
+        .modal-overlay.open{display:flex}
+        .modal-box{background:white;border-radius:20px;max-width:560px;width:100%;max-height:80vh;overflow-y:auto;padding:24px}
+        .modal-box h3{font-size:16px;font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+        .modal-close{cursor:pointer;color:#94a3b8;font-size:18px;background:none;border:none}
+        .modal-close:hover{color:#dc2626}
+        .modal-meta{font-size:12px;color:#64748b;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:12px}
+        .modal-item{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+        .modal-item-name{flex:1}
+        .modal-item-meta{color:#64748b;white-space:nowrap}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1><i class="fas fa-chart-scatter"></i> データサマリー</h1>
+        <p>売上分析 | 利益集計 | カテゴリ別内訳 | 在庫評価</p>
+        <div class="nav-links">
+            <a href="/products"><i class="fas fa-box"></i> 商品管理</a>
+            <a href="/inventory"><i class="fas fa-warehouse"></i> 在庫管理</a>
+            <a href="/orders"><i class="fas fa-shopping-cart"></i> 贩卖信息</a>
+            <a href="/benefit"><i class="fas fa-coins"></i> 利益管理</a>
+            <a href="/daily-summary" class="active"><i class="fas fa-chart-line"></i> 每日总结</a>
+        </div>
+    </div>
+    
+    <div class="filter-bar">
+        <div class="filter-group"><label><i class="fas fa-calendar"></i> 開始日</label><input type="date" id="startDate"></div>
+        <div class="filter-group"><label><i class="fas fa-calendar"></i> 終了日</label><input type="date" id="endDate"></div>
+        <div class="filter-group"><label><i class="fas fa-bolt"></i> クイック</label><select id="quickSelect" onchange="quickFilter()"><option value="">カスタム</option><option value="today">今日</option><option value="yesterday">昨日</option><option value="week">今週</option><option value="month">今月</option><option value="last7">過去7日</option><option value="last30">過去30日</option></select></div>
+        <div style="flex:1"></div>
+        <div class="filter-group"><button class="btn btn-primary" onclick="loadSummary()"><i class="fas fa-search"></i> 集計実行</button><button class="btn btn-outline" onclick="loadToday()"><i class="fas fa-sun"></i> 今日</button></div>
+    </div>
+    
+    <div id="summaryContent"><div class="loading"><div class="spinner"></div>データ読み込み中...</div></div>
+    <div class="last-update" id="lastUpdate"></div>
+</div>
+
+<div class="modal-overlay" id="orderModal" onclick="if(event.target===this)closeOrderModal()">
+    <div class="modal-box">
+        <h3><span id="modalOrderNumber"></span><button class="modal-close" onclick="closeOrderModal()"><i class="fas fa-times"></i></button></h3>
+        <div class="modal-meta" id="modalMeta"></div>
+        <div id="modalItems"></div>
+    </div>
+</div>
+
+<script>
+    const categories=[
+        {key:'アニメ・グッズ（预售）',icon:'🎬',color:'#8b5cf6',class:'cat-preorder'},
+        {key:'アニメ・グッズ（在库）',icon:'📦',color:'#3b82f6',class:'cat-instock'},
+        {key:'食品・お菓子・天然生活',icon:'🌿',color:'#10b981',class:'cat-food'},
+        {key:'健康食品',icon:'🍎',color:'#ef4444',class:'cat-health'},
+        {key:'美容・コスメ・ボディケア',icon:'💄',color:'#ec4899',class:'cat-beauty'},
+        {key:'日用品雑貨',icon:'🏠',color:'#f59e0b',class:'cat-daily'},
+        {key:'医薬品',icon:'💊',color:'#8b5cf6',class:'cat-medicine'},
+        {key:'水・ソフトドリンク',icon:'🥤',color:'#06b6d4',class:'cat-drink'},
+        {key:'その他',icon:'📦',color:'#6b7280',class:'cat-other'}
+    ];
+    
+    function setDefaultDates(){const t=new Date().toISOString().split('T')[0];if(!document.getElementById('startDate').value)document.getElementById('startDate').value=t;if(!document.getElementById('endDate').value)document.getElementById('endDate').value=t}
+    function quickFilter(){const v=document.getElementById('quickSelect').value,t=new Date(),e=new Date().toISOString().split('T')[0];let s='';switch(v){case'today':s=e;break;case'yesterday':const y=new Date(t);y.setDate(t.getDate()-1);s=y.toISOString().split('T')[0];document.getElementById('endDate').value=s;break;case'week':const w=new Date(t);w.setDate(t.getDate()-7);s=w.toISOString().split('T')[0];break;case'month':const m=new Date(t);m.setDate(t.getDate()-30);s=m.toISOString().split('T')[0];break;case'last7':const l7=new Date(t);l7.setDate(t.getDate()-7);s=l7.toISOString().split('T')[0];break;case'last30':const l30=new Date(t);l30.setDate(t.getDate()-30);s=l30.toISOString().split('T')[0];break;default:return}if(v!=='yesterday')document.getElementById('endDate').value=e;if(s)document.getElementById('startDate').value=s;document.getElementById('quickSelect').value='';loadSummary()}
+    function loadToday(){const t=new Date().toISOString().split('T')[0];document.getElementById('startDate').value=t;document.getElementById('endDate').value=t;document.getElementById('quickSelect').value='';loadSummary()}
+    
+    async function loadSummary(){
+        const c=document.getElementById('summaryContent');c.innerHTML='<div class="loading"><div class="spinner"></div>データ読み込み中...</div>';
+        const sd=document.getElementById('startDate').value,ed=document.getElementById('endDate').value;
+        try{
+            const res=await fetch(`/api/daily-summary?start_date=${sd}&end_date=${ed}`);
+            const data=await res.json();
+            console.log('API Response:',data);
+            if(data.success){
+                renderSummary(data.summary,sd,ed);
+                document.getElementById('lastUpdate').innerHTML=`<i class="fas fa-clock"></i> 最終更新: ${new Date().toLocaleString()} | 期間: ${sd} → ${ed}`;
+            }else{
+                c.innerHTML=`<div class="loading" style="color:red;">❌ エラー: ${data.error}</div>`;
+            }
+        }catch(e){
+            console.error('Error:',e);
+            c.innerHTML=`<div class="loading" style="color:red;">❌ ネットワークエラー: ${e.message}</div>`;
+        }
+    }
+    
+    function renderSummary(summary,sd,ed){
+        const total=summary.total||{count:0,sales:0,profit:0,profit_rate:0};
+        const cats=summary.categories||[];
+        const stockSummary=summary.stock_summary||{total_value:0,top_items:[]};
+        const totalProducts=summary.total_products||0;
+        
+        // KPI卡片
+        let kpiHtml=`<div class="kpi-grid">
+            <div class="kpi-card"><div class="kpi-header"><div class="kpi-icon"><i class="fas fa-shopping-cart"></i></div></div><div class="kpi-value">${total.count}</div><div class="kpi-label">受注件数</div></div>
+            <div class="kpi-card"><div class="kpi-header"><div class="kpi-icon"><i class="fas fa-yen-sign"></i></div></div><div class="kpi-value">¥${(total.sales||0).toLocaleString()}</div><div class="kpi-label">総売上高</div></div>
+            <div class="kpi-card"><div class="kpi-header"><div class="kpi-icon"><i class="fas fa-chart-line"></i></div></div><div class="kpi-value">¥${(total.profit||0).toLocaleString()}</div><div class="kpi-label">推定利益</div></div>
+            <div class="kpi-card"><div class="kpi-header"><div class="kpi-icon"><i class="fas fa-percent"></i></div></div><div class="kpi-value">${(total.profit_rate||0).toFixed(1)}%</div><div class="kpi-label">利益率</div></div>
+        </div>`;
+        
+        // 8分类卡片
+        let categoryHtml='<div class="section-title"><i class="fas fa-chart-pie"></i> カテゴリ別商品内訳</div><div class="category-grid">';
+        let totalCount=0;
+        for(let cat of categories){
+            const found=cats.find(c=>c.name===cat.key);
+            const count=found?found.count:0;
+            totalCount+=count;
+        }
+        for(let cat of categories){
+            const found=cats.find(c=>c.name===cat.key);
+            const count=found?found.count:0;
+            const percent=totalCount>0?(count/totalCount*100).toFixed(1):0;
+            categoryHtml+=`<div class="category-card ${cat.class}"><div class="category-header"><div class="category-icon">${cat.icon}</div><div class="category-name">${cat.key}</div></div><div class="category-stats"><div class="category-count">${count}</div><div class="category-percent">${percent}%</div></div><div class="category-bar"><div class="category-bar-fill" style="width:${percent}%"></div></div></div>`;
+        }
+        categoryHtml+='</div>';
+        
+        // 在库金额TOP10
+        let stockHtml='<div class="info-card"><h3><i class="fas fa-warehouse"></i> 在庫金額ランキング TOP10</h3><div class="stock-list">';
+        if(stockSummary.top_items&&stockSummary.top_items.length>0){
+            for(let i=0;i<Math.min(stockSummary.top_items.length,10);i++){
+                const item=stockSummary.top_items[i];
+                stockHtml+=`<div class="stock-item"><div class="stock-info"><div class="stock-name">${escapeHtml(item.name)}</div><div class="stock-meta">単価: ¥${(item.price||0).toLocaleString()} × ${item.qty||0}個</div></div><div class="stock-price">¥${(item.value||0).toLocaleString()}</div></div>`;
+            }
+        }else{stockHtml+='<div style="text-align:center;padding:30px;color:#94a3b8">在庫データがありません</div>';}
+        stockHtml+='</div></div>';
+        
+        // 在庫サマリー
+        let inventorySummary=`<div class="info-card"><h3><i class="fas fa-chart-simple"></i> 在庫サマリー</h3><div><div style="display:flex;justify-content:space-between;padding:12px 0"><span style="color:#64748b">総商品数</span><span class="stock-price">${totalProducts}点</span></div><div style="display:flex;justify-content:space-between;padding:12px 0;border-top:1px solid #e2e8f0"><span style="color:#64748b">在庫総額</span><span class="stock-price">¥${(stockSummary.total_value||0).toLocaleString()}</span></div></div></div>`;
+        
+        // 订单明细区块
+        let ordersSectionHtml='<div class="section-title"><i class="fas fa-receipt"></i> 受注明細（当日注文詳細）</div><div class="orders-card">'+
+            '<div class="orders-toolbar">'+
+            '<input type="text" id="orderSearchInput" placeholder="订单号 / 客户名で検索..." oninput="onOrderSearch()">'+
+            '<span class="orders-count" id="ordersCountLabel"></span>'+
+            '<button class="btn btn-outline" onclick="exportOrdersCSV()"><i class="fas fa-download"></i> CSV出力</button>'+
+            '</div>'+
+            '<div style="overflow-x:auto"><table class="orders-table"><thead><tr>'+
+            '<th onclick="sortOrders(\'orderNumber\')">订单号 <i class="fas fa-sort"></i></th>'+
+            '<th onclick="sortOrders(\'orderDate\')">日付 <i class="fas fa-sort"></i></th>'+
+            '<th onclick="sortOrders(\'customerName\')">客户 <i class="fas fa-sort"></i></th>'+
+            '<th>カテゴリ</th>'+
+            '<th onclick="sortOrders(\'totalAmount\')">金额(¥) <i class="fas fa-sort"></i></th>'+
+            '<th>状態</th><th>明細</th></tr></thead><tbody id="ordersTableBody"></tbody></table></div>'+
+            '<div class="pagination" id="ordersPagination"></div>'+
+            '</div>';
+        
+        document.getElementById('summaryContent').innerHTML=kpiHtml+categoryHtml+`<div class="two-columns">${inventorySummary}${stockHtml}</div>`+ordersSectionHtml;
+        
+        allOrders=summary.order_items||[];
+        orderSearch='';orderPage=1;orderSort={column:'orderDate',order:'desc'};
+        document.getElementById('orderSearchInput')&&(document.getElementById('orderSearchInput').value='');
+        renderOrdersTable();
+    }
+    
+    // ===== 订单明细表格 =====
+    let allOrders=[],orderSearch='',orderPage=1,orderSort={column:'orderDate',order:'desc'};
+    const ORDERS_PER_PAGE=15;
+    
+    function getOrderStatus(p){const m={100:{cls:'status-pending',text:'待确认'},200:{cls:'status-pending',text:'已确认'},300:{cls:'status-paid',text:'已付款'},400:{cls:'status-shipped',text:'已发货'},500:{cls:'status-completed',text:'已完成'},600:{cls:'status-pending',text:'已取消'}};return m[p]||{cls:'status-pending',text:'处理中'}}
+    function getCategoryClass(c){const m={'アニメ・グッズ（预售）':'category-preorder','アニメ・グッズ（在库）':'category-instock','食品・お菓子・天然生活':'category-food','健康食品':'category-health','美容・コスメ・ボディケア':'category-beauty','日用品雑貨':'category-daily','医薬品':'category-medicine','水・ソフトドリンク':'category-drink','その他':'category-other'};return m[c]||'category-other'}
+    function getCategoryIcon(c){const m={'アニメ・グッズ（预售）':'🎬','アニメ・グッズ（在库）':'📦','食品・お菓子・天然生活':'🌿','健康食品':'🍎','美容・コスメ・ボディケア':'💄','日用品雑貨':'🏠','医薬品':'💊','水・ソフトドリンク':'🥤','その他':'📦'};return m[c]||'📦'}
+    
+    function onOrderSearch(){orderSearch=document.getElementById('orderSearchInput').value.toLowerCase();orderPage=1;renderOrdersTable()}
+    function sortOrders(col){if(orderSort.column===col){orderSort.order=orderSort.order==='asc'?'desc':'asc'}else{orderSort={column:col,order:'asc'}}renderOrdersTable()}
+    
+    function getFilteredSortedOrders(){
+        let list=[...allOrders];
+        if(orderSearch){list=list.filter(o=>(o.orderNumber||'').toLowerCase().includes(orderSearch)||(o.customerName||'').toLowerCase().includes(orderSearch))}
+        list.sort((a,b)=>{
+            let va=a[orderSort.column],vb=b[orderSort.column];
+            if(orderSort.column==='totalAmount'){va=parseFloat(va)||0;vb=parseFloat(vb)||0}
+            if(va<vb)return orderSort.order==='asc'?-1:1;
+            if(va>vb)return orderSort.order==='asc'?1:-1;
+            return 0;
+        });
+        return list;
+    }
+    
+    function renderOrdersTable(){
+        const tbody=document.getElementById('ordersTableBody');
+        if(!tbody)return;
+        const filtered=getFilteredSortedOrders();
+        document.getElementById('ordersCountLabel').innerText=`${filtered.length} 件`;
+        if(!filtered.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8">该期间内暂无订单数据</td></tr>';document.getElementById('ordersPagination').innerHTML='';return}
+        const start=(orderPage-1)*ORDERS_PER_PAGE;
+        const pageOrders=filtered.slice(start,start+ORDERS_PER_PAGE);
+        let html='';
+        for(let o of pageOrders){
+            const idxInAll=allOrders.indexOf(o);
+            const s=getOrderStatus(o.status);
+            const cat=o.category||'その他';
+            html+=`<tr>
+                <td class="order-num">${escapeHtml(o.orderNumber)}</td>
+                <td>${escapeHtml(o.orderDate)}</td>
+                <td>${escapeHtml(o.customerName||'---')}</td>
+                <td><span class="category-badge ${getCategoryClass(cat)}">${getCategoryIcon(cat)} ${cat}</span></td>
+                <td class="amt">¥${(o.totalAmount||0).toLocaleString()}</td>
+                <td><span class="status-badge ${s.cls}">${s.text}</span></td>
+                <td><button class="detail-btn" onclick="showOrderDetail(${idxInAll})"><i class="fas fa-eye"></i> 查看</button></td>
+            </tr>`;
+        }
+        tbody.innerHTML=html;
+        renderOrdersPagination(filtered.length);
+    }
+    
+    function renderOrdersPagination(total){
+        const totalPages=Math.ceil(total/ORDERS_PER_PAGE);
+        const el=document.getElementById('ordersPagination');
+        if(totalPages<=1){el.innerHTML='';return}
+        let html=`<button ${orderPage===1?'disabled':''} onclick="goOrderPage(${orderPage-1})">‹</button>`;
+        for(let i=1;i<=totalPages;i++){
+            if(i===1||i===totalPages||Math.abs(i-orderPage)<=2){
+                html+=`<button class="${i===orderPage?'active':''}" onclick="goOrderPage(${i})">${i}</button>`;
+            }else if(Math.abs(i-orderPage)===3){html+='<span style="padding:6px">...</span>'}
+        }
+        html+=`<button ${orderPage===totalPages?'disabled':''} onclick="goOrderPage(${orderPage+1})">›</button>`;
+        el.innerHTML=html;
+    }
+    function goOrderPage(p){orderPage=p;renderOrdersTable()}
+    
+    function showOrderDetail(idx){
+        const o=allOrders[idx];
+        if(!o)return;
+        const s=getOrderStatus(o.status);
+        document.getElementById('modalOrderNumber').innerText='订单号: '+o.orderNumber;
+        document.getElementById('modalMeta').innerHTML=`
+            <span><i class="fas fa-calendar"></i> ${escapeHtml(o.orderDate)}</span>
+            <span><i class="fas fa-user"></i> ${escapeHtml(o.customerName||'---')}</span>
+            <span class="status-badge ${s.cls}">${s.text}</span>
+            <span class="amt">合计: ¥${(o.totalAmount||0).toLocaleString()}</span>`;
+        const items=o.items||[];
+        let itemsHtml='';
+        if(items.length){
+            for(let it of items){
+                itemsHtml+=`<div class="modal-item"><div class="modal-item-name">${escapeHtml(it.name)}</div><div class="modal-item-meta">¥${(it.price||0).toLocaleString()} × ${it.quantity||1}</div></div>`;
+            }
+        }else{
+            itemsHtml='<div style="text-align:center;padding:20px;color:#94a3b8">商品明細データがありません</div>';
+        }
+        document.getElementById('modalItems').innerHTML=itemsHtml;
+        document.getElementById('orderModal').classList.add('open');
+    }
+    function closeOrderModal(){document.getElementById('orderModal').classList.remove('open')}
+    
+    function exportOrdersCSV(){
+        const filtered=getFilteredSortedOrders();
+        if(!filtered.length){alert('无数据可导出');return}
+        const rows=[['订单号','日期','客户','分类','金额','状态']];
+        for(let o of filtered){rows.push([o.orderNumber,o.orderDate,o.customerName||'',o.category||'',o.totalAmount||0,getOrderStatus(o.status).text])}
+        let csv='';for(let r of rows){csv+=r.join(',')+'\n'}
+        const blob=new Blob(["\uFEFF"+csv],{type:'text/csv;charset=utf-8'});
+        const link=document.createElement('a');
+        link.href=URL.createObjectURL(blob);
+        link.download='daily_orders_'+new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.csv';
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+    
+    function escapeHtml(s){if(!s)return '';return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
+    setDefaultDates();loadSummary();
+</script>
+</body>
+</html>
