@@ -955,11 +955,11 @@ def daily_summary_api():
                 category_count['その他'] = category_count.get('その他', 0) + 1
                 category_total_price['その他'] = category_total_price.get('その他', 0) + price
         
-        # ===== 订单统计变量（新增运费相关） =====
+        # ===== 订单统计变量 =====
         total_orders = 0
         total_sales = 0           # 总销售额（商品金额 + 运费）
-        total_item_sum = 0        # 🆕 商品金额合计（不含运费）
-        total_shipping_sum = 0    # 🆕 运费合计
+        total_item_sum = 0        # 商品金额合计（不含运费）
+        total_shipping_sum = 0    # 运费合计
         order_details = []
         cancelled_count = 0
         
@@ -1009,41 +1009,35 @@ def daily_summary_api():
                         
                         total_orders += 1
                         
-                        # ===== 🆕 获取商品金额（不含运费） =====
-                        # requestPrice: 商品合计金额（税込、送料別）
+                        # ===== 获取商品金额（不含运费） =====
                         item_total = order.get('requestPrice', 0)
                         if item_total == 0:
                             item_total = order.get('totalPrice', 0)
                         
-                        # ===== 🆕 获取运费 =====
-                        shipping = 0
+                        # ===== 获取运费（使用 postagePrice） =====
+                        shipping = order.get('postagePrice', 0)
                         
-                        # 方法1：直接从顶层获取 shippingPrice
-                        shipping = order.get('shippingPrice', 0)
-                        
-                        # 方法2：从 ShippingModelList 获取
+                        # 备用：如果 postagePrice 不存在，尝试其他字段
                         if shipping == 0:
-                            shipping_list = order.get('ShippingModelList', [])
-                            if shipping_list and isinstance(shipping_list, list):
-                                shipping = shipping_list[0].get('shippingPrice', 0)
-                        
-                        # 方法3：从 PackageModelList 中的配送信息获取
+                            shipping = order.get('shippingPrice', 0)
                         if shipping == 0:
                             packages = order.get('PackageModelList', []) or order.get('packageModelList', [])
                             for pkg in packages:
-                                pkg_shipping = pkg.get('shippingPrice', 0) or pkg.get('carriage', 0)
+                                pkg_shipping = pkg.get('postagePrice', 0) or pkg.get('shippingPrice', 0) or pkg.get('carriage', 0)
                                 shipping += pkg_shipping
                         
-                        # ===== 🆕 累計 =====
+                        # ===== 累計 =====
                         total_item_sum += item_total
                         total_shipping_sum += shipping
                         total_sales += item_total + shipping
                         
-                        # 获取客户信息
-                        orderer_info = order.get('ordererModel', order.get('OrdererModel', order.get('ordererInfo', {}))) or {}
-                        last_name = orderer_info.get('ordererLastName', '') or ''
-                        first_name = orderer_info.get('ordererFirstName', '') or ''
-                        customer_name = (last_name + first_name).strip() or orderer_info.get('ordererLastNameKana', '') or '---'
+                        # ===== 获取客户信息（修正字段名） =====
+                        orderer_info = order.get('OrdererModel', {}) or order.get('ordererModel', {})
+                        family_name = orderer_info.get('familyName', '') or ''
+                        first_name = orderer_info.get('firstName', '') or ''
+                        customer_name = (family_name + first_name).strip()
+                        if not customer_name:
+                            customer_name = orderer_info.get('familyNameKana', '') or orderer_info.get('firstNameKana', '') or '---'
                         
                         # 获取商品明细
                         packages = order.get('PackageModelList', order.get('packageModelList', [])) or []
@@ -1067,13 +1061,13 @@ def daily_summary_api():
                                 order_category = manage_number_to_category[mn]
                                 break
                         
-                        # ===== 🆕 订单明细中添加 item_total 和 shipping =====
+                        # 订单明细中添加 item_total 和 shipping
                         order_details.append({
                             'orderNumber': order_number,
                             'orderDate': (order.get('orderDatetime', '')[:10]) if order.get('orderDatetime') else '',
                             'customerName': customer_name,
-                            'item_total': item_total,      # 🆕 商品金额
-                            'shipping': shipping,          # 🆕 运费
+                            'item_total': item_total,
+                            'shipping': shipping,
                             'totalAmount': item_total + shipping,
                             'status': order_progress,
                             'category': order_category,
@@ -1135,7 +1129,7 @@ def daily_summary_api():
                 'color': cat_info['color']
             })
         
-        # ===== 🆕 返回数据中添加 item_total 和 shipping_total =====
+        # 返回数据中添加 item_total 和 shipping_total
         result = {
             'success': True,
             'summary': {
@@ -1144,8 +1138,8 @@ def daily_summary_api():
                 'total': {
                     'count': total_orders,
                     'sales': total_sales,              # 总销售额（商品+运费）
-                    'item_total': total_item_sum,      # 🆕 商品金额合计（不含运费）
-                    'shipping_total': total_shipping_sum,  # 🆕 运费合计
+                    'item_total': total_item_sum,      # 商品金额合计（不含运费）
+                    'shipping_total': total_shipping_sum,  # 运费合计
                     'profit': estimated_profit,
                     'profit_rate': profit_rate,
                     'cancelled_count': cancelled_count
