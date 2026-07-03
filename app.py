@@ -957,9 +957,9 @@ def daily_summary_api():
         
         # ===== 订单统计变量 =====
         total_orders = 0
-        total_sales = 0           # 总销售额（商品金额 + 运费）
-        total_item_sum = 0        # 商品金额合计（不含运费）
-        total_shipping_sum = 0    # 运费合计
+        total_sales = 0
+        total_item_sum = 0
+        total_shipping_sum = 0
         order_details = []
         cancelled_count = 0
         
@@ -981,7 +981,6 @@ def daily_summary_api():
                 search_result = search_response.json()
                 order_numbers = search_result.get('orderNumberList', [])
                 
-                # 分批获取全部订单详情
                 for i in range(0, len(order_numbers), 100):
                     batch = order_numbers[i:i + 100]
                     detail_response = session.post(
@@ -998,7 +997,6 @@ def daily_summary_api():
                     orders = detail_data.get('OrderModelList', [])
                     
                     for order in orders:
-                        # 检查订单状态，跳过已取消的订单 (600)
                         order_progress = order.get('orderProgress', 0)
                         order_number = order.get('orderNumber', '')
                         
@@ -1009,15 +1007,22 @@ def daily_summary_api():
                         
                         total_orders += 1
                         
-                        # ===== 获取商品金额（不含运费） =====
-                        item_total = order.get('requestPrice', 0)
+                        # ===== 🆕 获取商品金额（不含运费）：从商品明细中计算 =====
+                        item_total = 0
+                        packages = order.get('PackageModelList', order.get('packageModelList', [])) or []
+                        for pkg in packages:
+                            items = pkg.get('ItemModelList', pkg.get('itemModelList', [])) or []
+                            for item in items:
+                                price = item.get('price', 0)
+                                quantity = item.get('units', item.get('quantity', 1))
+                                item_total += price * quantity
+                        
+                        # 备用：如果从明细计算为0，再使用 requestPrice
                         if item_total == 0:
-                            item_total = order.get('totalPrice', 0)
+                            item_total = order.get('requestPrice', 0)
                         
                         # ===== 获取运费（使用 postagePrice） =====
                         shipping = order.get('postagePrice', 0)
-                        
-                        # 备用：如果 postagePrice 不存在，尝试其他字段
                         if shipping == 0:
                             shipping = order.get('shippingPrice', 0)
                         if shipping == 0:
@@ -1031,7 +1036,7 @@ def daily_summary_api():
                         total_shipping_sum += shipping
                         total_sales += item_total + shipping
                         
-                        # ===== 获取客户信息（修正字段名） =====
+                        # ===== 获取客户信息 =====
                         orderer_info = order.get('OrdererModel', {}) or order.get('ordererModel', {})
                         family_name = orderer_info.get('familyName', '') or ''
                         first_name = orderer_info.get('firstName', '') or ''
@@ -1039,7 +1044,7 @@ def daily_summary_api():
                         if not customer_name:
                             customer_name = orderer_info.get('familyNameKana', '') or orderer_info.get('firstNameKana', '') or '---'
                         
-                        # 获取商品明细
+                        # 获取商品明细（用于前端显示）
                         packages = order.get('PackageModelList', order.get('packageModelList', [])) or []
                         item_list = []
                         for pkg in packages:
@@ -1053,7 +1058,6 @@ def daily_summary_api():
                                     'manageNumber': manage_number
                                 })
                         
-                        # 判断订单分类
                         order_category = 'その他'
                         for it in item_list:
                             mn = it.get('manageNumber')
@@ -1061,7 +1065,6 @@ def daily_summary_api():
                                 order_category = manage_number_to_category[mn]
                                 break
                         
-                        # 订单明细中添加 item_total 和 shipping
                         order_details.append({
                             'orderNumber': order_number,
                             'orderDate': (order.get('orderDatetime', '')[:10]) if order.get('orderDatetime') else '',
@@ -1081,11 +1084,9 @@ def daily_summary_api():
         except Exception as e:
             print(f"订单API调用异常: {e}")
         
-        # 估算利润（基于商品金额，不含运费）
         estimated_profit = int(total_item_sum * 0.3) if total_item_sum > 0 else 0
         profit_rate = (estimated_profit / total_item_sum * 100) if total_item_sum > 0 else 0
         
-        # 获取库存数据
         stock_items = []
         total_stock_value = 0
         
@@ -1116,7 +1117,6 @@ def daily_summary_api():
         except Exception as e:
             print(f"库存统计异常: {e}")
         
-        # 分类统计
         category_list = []
         for cat in categories_list:
             cat_info = get_category_info(cat)
@@ -1129,7 +1129,6 @@ def daily_summary_api():
                 'color': cat_info['color']
             })
         
-        # 返回数据中添加 item_total 和 shipping_total
         result = {
             'success': True,
             'summary': {
@@ -1137,9 +1136,9 @@ def daily_summary_api():
                 'total_products': len(products),
                 'total': {
                     'count': total_orders,
-                    'sales': total_sales,              # 总销售额（商品+运费）
-                    'item_total': total_item_sum,      # 商品金额合计（不含运费）
-                    'shipping_total': total_shipping_sum,  # 运费合计
+                    'sales': total_sales,
+                    'item_total': total_item_sum,
+                    'shipping_total': total_shipping_sum,
                     'profit': estimated_profit,
                     'profit_rate': profit_rate,
                     'cancelled_count': cancelled_count
