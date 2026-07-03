@@ -16,22 +16,27 @@
         .nav-links{margin-top:16px;display:flex;gap:28px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,0.2);padding-top:14px}
         .nav-links a{color:white;text-decoration:none;font-size:0.85rem;font-weight:500;opacity:0.75;transition:0.2s;display:inline-flex;align-items:center;gap:6px}
         .nav-links a:hover,.nav-links a.active{opacity:1}
-        .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin:24px 0}
-        @media (max-width:720px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+        .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:20px;margin:24px 0}
+        @media (max-width:720px){.stats-grid{grid-template-columns:repeat(3,1fr)}}
+        @media (max-width:480px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
         .stat-card{background:white;border-radius:24px;padding:18px 12px;text-align:center;box-shadow:0 8px 20px rgba(0,0,0,0.04);border:1px solid #e9edf2}
         .stat-icon{font-size:32px;margin-bottom:8px}
-        .stat-number{font-size:32px;font-weight:800;color:#c42b2b}
+        .stat-number{font-size:28px;font-weight:800;color:#c42b2b}
         .stat-label{color:#5b6e8c;font-size:12px;font-weight:500;margin-top:6px}
         .toolbar{background:white;padding:16px 24px;border-radius:20px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;border:1px solid #eef2f9}
         .date-group{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
         .date-input{padding:10px 14px;border:1px solid #cfdfed;border-radius:14px;font-size:13px;background:#fefefe}
-        .search-box input{padding:10px 16px;border:1px solid #cfdfed;border-radius:14px;font-size:13px;width:240px;outline:none}
+        .search-box input{padding:10px 16px;border:1px solid #cfdfed;border-radius:14px;font-size:13px;width:200px;outline:none}
         .search-box input:focus{border-color:#c42b2b}
+        .filter-select{padding:10px 14px;border:1px solid #cfdfed;border-radius:14px;font-size:13px;background:#fefefe;cursor:pointer;outline:none}
+        .filter-select:focus{border-color:#c42b2b}
         .btn{padding:10px 20px;border:none;border-radius:40px;cursor:pointer;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:8px}
         .btn-primary{background:#c42b2b;color:white}
         .btn-primary:hover{background:#991f1f}
         .btn-success{background:#1f8a4c;color:white}
         .btn-success:hover{background:#146b3a}
+        .btn-outline{background:white;border:1px solid #cfdfed;color:#2c3e66}
+        .btn-outline:hover{background:#f1f5f9}
         .category-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:30px;font-size:11px;font-weight:600;white-space:nowrap}
         .category-preorder{background:#8b5cf6;color:white}
         .category-instock{background:#3b82f6;color:white}
@@ -48,8 +53,8 @@
         .status-paid{background:#fef3c7;color:#92400e}
         .status-pending{background:#ffe4e2;color:#b91c1c}
         .table-wrapper{background:white;border-radius:20px;overflow:hidden;border:1px solid #eef2f9}
-        table{width:100%;border-collapse:collapse;min-width:700px}
-        th{background:#fafcff;padding:14px 16px;text-align:left;font-size:12.5px;font-weight:700;color:#2c3e66;border-bottom:1px solid #e5eaef;cursor:pointer}
+        table{width:100%;border-collapse:collapse;min-width:900px}
+        th{background:#fafcff;padding:14px 16px;text-align:left;font-size:12.5px;font-weight:700;color:#2c3e66;border-bottom:1px solid #e5eaef;cursor:pointer;white-space:nowrap}
         td{padding:12px 16px;border-bottom:1px solid #f0f3f8;font-size:13px}
         tr:hover{background:#fefaf5}
         .loading-container{text-align:center;padding:60px 20px;color:#6c86a3}
@@ -59,69 +64,81 @@
         .page-btn{padding:6px 12px;border:1px solid #dee4ec;background:white;cursor:pointer;border-radius:30px;font-size:13px;min-width:38px}
         .page-btn:hover{background:#f1f5f9;border-color:#c42b2b}
         .page-btn.active{background:#c42b2b;color:white;border-color:#c42b2b}
+        .page-btn:disabled{opacity:0.5;cursor:not-allowed}
         .info-message{background:#fff7e5;border-left:5px solid #f5b042;padding:12px 18px;margin-bottom:20px;border-radius:16px;font-size:12px;color:#8a6e2f;display:flex;align-items:center;gap:12px}
         .footer{text-align:center;padding:20px 16px 8px;color:#95adcc;font-size:11px}
-        @media (max-width:640px){body{padding:12px}.toolbar{flex-direction:column;align-items:stretch}.date-group{justify-content:space-between}}
+        .amt{font-weight:700;color:#bf0000}
+        .shipping-amt{font-weight:600;color:#059669}
+        .item-amt{font-weight:600;color:#2563eb}
+        .filter-tag{display:inline-block;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;margin-left:6px}
+        .filter-tag.has-shipping{background:#d1fae5;color:#065f46}
+        .filter-tag.no-shipping{background:#fef3c7;color:#92400e}
+        .toolbar-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+        @media (max-width:640px){body{padding:12px}.toolbar{flex-direction:column;align-items:stretch}.date-group{justify-content:space-between}.toolbar-actions{flex-direction:column;align-items:stretch}}
         /* ============================================================
-   📱 移动端适配
-   ============================================================ */
-
-/* 平板设备 */
-@media (max-width: 1024px) {
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-/* 手机设备 */
-@media (max-width: 768px) {
-    body { padding: 10px; }
-    
-    .header { padding: 14px 16px; border-radius: 12px; }
-    .header h1 { font-size: 1.1rem; }
-    .header p { font-size: 0.7rem; }
-    .nav-links { gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15); }
-    .nav-links a { font-size: 0.65rem; padding: 3px 8px; background: rgba(255,255,255,0.08); border-radius: 12px; white-space: nowrap; }
-    .nav-links a.active { background: rgba(255,255,255,0.2); }
-    
-    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .stat-card { padding: 10px 8px; border-radius: 12px; }
-    .stat-number { font-size: 20px; }
-    .stat-label { font-size: 10px; }
-    .stat-icon { font-size: 22px; }
-    
-    .info-message { font-size: 11px; padding: 10px 14px; border-radius: 12px; flex-wrap: wrap; }
-    .info-message span { flex: 1; }
-    
-    .toolbar { padding: 12px 14px; flex-direction: column; align-items: stretch; gap: 8px; border-radius: 12px; }
-    .date-group { flex-wrap: wrap; gap: 6px; }
-    .date-group input { flex: 1; min-width: 80px; padding: 8px 10px; font-size: 12px; border-radius: 10px; }
-    .date-group .btn { flex: 1; min-width: 60px; justify-content: center; }
-    .search-box input { width: 100%; padding: 8px 12px; font-size: 12px; border-radius: 10px; }
-    .toolbar .btn-success { justify-content: center; padding: 8px; }
-    
-    .table-wrapper { border-radius: 12px; }
-    .table-wrapper > div { max-height: 50vh; }
-    table { font-size: 10px; min-width: 420px; }
-    th, td { padding: 5px 6px; }
-    th { font-size: 9px; }
-    td { font-size: 10px; }
-    td:first-child { font-size: 9px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    td:nth-child(2) { max-width: 70px; }
-    td:nth-child(3) { max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .category-badge { font-size: 8px; padding: 2px 5px; }
-    .status-badge { font-size: 8px; padding: 2px 6px; }
-    
-    .pagination { padding: 8px; gap: 3px; }
-    .page-btn { padding: 4px 8px; font-size: 10px; border-radius: 6px; }
-    
-    .footer { font-size: 10px; padding: 12px; }
-}
+           📱 移动端适配
+           ============================================================ */
+        @media (max-width: 1024px) {
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .header { padding: 14px 16px; border-radius: 12px; }
+            .header h1 { font-size: 1.1rem; }
+            .header p { font-size: 0.7rem; }
+            .nav-links { gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15); }
+            .nav-links a { font-size: 0.65rem; padding: 3px 8px; background: rgba(255,255,255,0.08); border-radius: 12px; white-space: nowrap; }
+            .nav-links a.active { background: rgba(255,255,255,0.2); }
+            .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+            .stat-card { padding: 10px 8px; border-radius: 12px; }
+            .stat-number { font-size: 18px; }
+            .stat-label { font-size: 9px; }
+            .stat-icon { font-size: 20px; }
+            .info-message { font-size: 11px; padding: 10px 14px; border-radius: 12px; flex-wrap: wrap; }
+            .toolbar { padding: 12px 14px; flex-direction: column; align-items: stretch; gap: 8px; border-radius: 12px; }
+            .date-group { flex-wrap: wrap; gap: 6px; }
+            .date-group input { flex: 1; min-width: 80px; padding: 8px 10px; font-size: 12px; border-radius: 10px; }
+            .date-group .btn { flex: 1; min-width: 60px; justify-content: center; }
+            .search-box input { width: 100%; padding: 8px 12px; font-size: 12px; border-radius: 10px; }
+            .filter-select { padding: 8px 10px; font-size: 12px; border-radius: 10px; width: 100%; }
+            .toolbar-actions { flex-direction: column; align-items: stretch; gap: 6px; }
+            .toolbar-actions .btn { justify-content: center; padding: 8px; }
+            .table-wrapper { border-radius: 12px; }
+            table { font-size: 10px; min-width: 580px; }
+            th, td { padding: 5px 6px; }
+            th { font-size: 9px; }
+            td { font-size: 10px; }
+            td:first-child { font-size: 8px; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .category-badge { font-size: 7px; padding: 2px 5px; }
+            .status-badge { font-size: 7px; padding: 2px 6px; }
+            .amt { font-size: 10px; }
+            .item-amt { font-size: 10px; }
+            .shipping-amt { font-size: 10px; }
+            .pagination { padding: 8px; gap: 3px; }
+            .page-btn { padding: 4px 8px; font-size: 10px; border-radius: 6px; }
+            .footer { font-size: 10px; padding: 12px; }
+        }
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .stat-number { font-size: 15px; }
+            .stat-label { font-size: 8px; }
+            table { min-width: 480px; font-size: 8px; }
+            th, td { padding: 3px 4px; }
+            th { font-size: 7px; }
+            td { font-size: 8px; }
+            .category-badge { font-size: 6px; padding: 1px 3px; }
+            .status-badge { font-size: 6px; padding: 1px 4px; }
+            .amt { font-size: 8px; }
+            .item-amt { font-size: 8px; }
+            .shipping-amt { font-size: 8px; }
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
         <h1><i class="fas fa-store"></i> 贩卖信息 · 楽天ペイ</h1>
-        <p>受注データ可視化 | 売上統計 | 検索期間最大63日 | 8商品カテゴリ</p>
+        <p>受注データ可視化 | 売上統計 | 検索期間最大63日 | 8商品カテゴリ | 商品金額・運費分離表示</p>
         <div class="nav-links">
             <a href="/products"><i class="fas fa-boxes"></i> 商品管理</a>
             <a href="/inventory"><i class="fas fa-chart-line"></i> 在庫管理</a>
@@ -132,87 +149,462 @@
     </div>
     <div class="stats-grid">
         <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-number" id="orderCount">0</div><div class="stat-label">订单总数</div></div>
-        <div class="stat-card"><div class="stat-icon">💴</div><div class="stat-number" id="totalAmount">¥0</div><div class="stat-label">总销售额 (JPY)</div></div>
+        <div class="stat-card"><div class="stat-icon">🏷️</div><div class="stat-number" id="totalItemAmount">¥0</div><div class="stat-label">商品金额合计</div></div>
+        <div class="stat-card"><div class="stat-icon">🚚</div><div class="stat-number" id="totalShippingAmount">¥0</div><div class="stat-label">运费合计</div></div>
+        <div class="stat-card"><div class="stat-icon">💴</div><div class="stat-number" id="totalAmount">¥0</div><div class="stat-label">总销售额</div></div>
         <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-number" id="avgAmount">¥0</div><div class="stat-label">平均订单额</div></div>
-        <div class="stat-card"><div class="stat-icon">🏷️</div><div class="stat-number" id="orderCategories">0</div><div class="stat-label">商品分类数</div></div>
     </div>
     <div class="info-message"><i class="fas fa-info-circle" style="font-size:18px"></i><span>楽天ペイ受注APIを利用（RMS申請必須）。検索期間は最大63日以内です。<br>日付を選択して「搜索订单」をクリックしてください。</span></div>
     <div class="toolbar">
-        <div class="date-group"><input type="date" id="startDate" class="date-input"><span>〜</span><input type="date" id="endDate" class="date-input"><button class="btn btn-primary" onclick="searchOrders()"><i class="fas fa-search"></i> 搜索订单</button></div>
-        <div class="search-box"><input type="text" id="searchInput" placeholder="🔍 订单号 / 客户名 ..." onkeyup="searchOrdersTable()"></div>
-        <button class="btn btn-success" onclick="exportCSV()"><i class="fas fa-download"></i> 导出 CSV</button>
+        <div class="date-group">
+            <input type="date" id="startDate" class="date-input">
+            <span>〜</span>
+            <input type="date" id="endDate" class="date-input">
+            <button class="btn btn-primary" onclick="searchOrders()"><i class="fas fa-search"></i> 搜索订单</button>
+        </div>
+        <div class="toolbar-actions">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="🔍 订单号 / 客户名 ..." onkeyup="searchOrdersTable()">
+            </div>
+            <select class="filter-select" id="shippingFilter" onchange="searchOrdersTable()">
+                <option value="all">📋 全部订单</option>
+                <option value="has">🚚 有运费</option>
+                <option value="none">📦 免运费</option>
+            </select>
+            <button class="btn btn-success" onclick="exportCSV()"><i class="fas fa-download"></i> 导出 CSV</button>
+        </div>
     </div>
     <div class="table-wrapper">
-        <div style="overflow-x:auto"><table id="orderTable"><thead><tr><th onclick="sortBy('orderNumber')">订单号 <i class="fas fa-sort"></i></th><th onclick="sortBy('orderDate')">订单日期 <i class="fas fa-sort"></i></th><th onclick="sortBy('customerName')">客户名称 <i class="fas fa-sort"></i></th><th onclick="sortBy('totalAmount')">金额(¥) <i class="fas fa-sort"></i></th><th>カテゴリ</th><th>状態</th></tr></thead>
-        <tbody id="orderTableBody"><tr><td colspan="6" class="loading-container"><i class="fas fa-cloud-upload-alt" style="font-size:28px;opacity:0.5;display:block;margin-bottom:12px"></i>「搜索订单」をクリックして受注データを読み込む<br>※ 期間指定 (最大63日)</td></tr></tbody></table></div>
+        <div style="overflow-x:auto">
+            <table id="orderTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortBy('orderNumber')">订单号 <i class="fas fa-sort"></i></th>
+                        <th onclick="sortBy('orderDate')">订单日期 <i class="fas fa-sort"></i></th>
+                        <th onclick="sortBy('customerName')">客户名称 <i class="fas fa-sort"></i></th>
+                        <th onclick="sortBy('itemTotal')">商品金额 <i class="fas fa-sort"></i></th>
+                        <th onclick="sortBy('shipping')">运费 <i class="fas fa-sort"></i></th>
+                        <th onclick="sortBy('totalAmount')">总金额 <i class="fas fa-sort"></i></th>
+                        <th>カテゴリ</th>
+                        <th>状態</th>
+                    </tr>
+                </thead>
+                <tbody id="orderTableBody">
+                    <tr><td colspan="8" class="loading-container"><i class="fas fa-cloud-upload-alt" style="font-size:28px;opacity:0.5;display:block;margin-bottom:12px"></i>「搜索订单」をクリックして受注データを読み込む<br>※ 期間指定 (最大63日)</td></tr>
+                </tbody>
+            </table>
+        </div>
         <div class="pagination" id="pagination"></div>
     </div>
     <div class="footer"><p>📡 データソース: 楽天ペイ受注API | <span id="lastUpdate">未更新</span></p></div>
 </div>
+
 <script>
-let allOrders=[],currentPage=1,itemsPerPage=30,currentSearch='',currentSort={column:'orderNumber',order:'asc'};
-function getCategoryClass(c){const m={'アニメ・グッズ（预售）':'category-preorder','アニメ・グッズ（在库）':'category-instock','食品・お菓子・天然生活':'category-food','健康食品':'category-health','美容・コスメ・ボディケア':'category-beauty','日用品雑貨':'category-daily','医薬品':'category-medicine','水・ソフトドリンク':'category-drink','その他':'category-other'};return m[c]||'category-other'}
-function getCategoryIcon(c){const m={'アニメ・グッズ（预售）':'🎬','アニメ・グッズ（在库）':'📦','食品・お菓子・天然生活':'🌿','健康食品':'🍎','美容・コスメ・ボディケア':'💄','日用品雑貨':'🏠','医薬品':'💊','水・ソフトドリンク':'🥤','その他':'📦'};return m[c]||'📦'}
-function getOrderStatus(p){const m={100:{cls:'status-pending',text:'待确认'},200:{cls:'status-pending',text:'已确认'},300:{cls:'status-paid',text:'已付款'},400:{cls:'status-shipped',text:'已发货'},500:{cls:'status-completed',text:'已完成'},600:{cls:'status-pending',text:'已取消'}};return m[p]||{cls:'status-pending',text:'处理中'}}
-function setDefaultDates(){const t=new Date().toISOString().split('T')[0];document.getElementById('startDate').value=t;document.getElementById('endDate').value=t}
-function getDaysDiff(s,e){return Math.ceil((new Date(e)-new Date(s))/(1000*60*60*24))}
-async function searchOrders(){
-    const sd=document.getElementById('startDate').value,ed=document.getElementById('endDate').value;
-    if(!sd||!ed){alert('请设置开始日期和结束日期');return}
-    if(getDaysDiff(sd,ed)>63){alert('検索期間は最大63日以内です');return}
-    const tbody=document.getElementById('orderTableBody');
-    tbody.innerHTML='<tr><td colspan="6" class="loading-container"><div class="spinner"></div>正在搜索订单，请稍候...</td></tr>';
-    try{
-        const searchRes=await fetch('/api/orders/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dateType:1,startDatetime:sd+'T00:00:00+0900',endDatetime:ed+'T23:59:59+0900',PaginationRequestModel:{requestRecordsAmount:100,requestPage:1,SortModelList:[]}})});
-        const searchData=await searchRes.json();
-        if(searchData.error){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px;color:#ef4444;">❌ '+searchData.error+'</td></tr>';return}
-        const msgList=searchData.messageModelList||[];
-        for(let msg of msgList){if(msg.messageType==='ERROR'){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px;color:#ef4444;">❌ '+msg.message+'</td></tr>';return}}
-        let orderNumbers=[];
-        if(searchData.orderNumberList&&searchData.orderNumberList.length>0)orderNumbers=searchData.orderNumberList;
-        else if(searchData.orderModelList&&searchData.orderModelList.length>0)orderNumbers=searchData.orderModelList.map(o=>o.orderNumber);
-        if(orderNumbers.length===0){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px;">该时间段内暂无订单</td></tr>';allOrders=[];updateStats();return}
-        const detailRes=await fetch('/api/orders/get',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderNumberList:orderNumbers,version:10})});
-        const detailData=await detailRes.json();
-        if(detailData.error){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px;color:#ef4444;">❌ '+detailData.error+'</td></tr>';return}
-        allOrders=[];
-        const orders=detailData.OrderModelList||detailData.orderModelList||detailData.orders||[];
-        for(let order of orders){
-            const info=order.ordererInfo||{},lastName=info.ordererLastName||'',firstName=info.ordererFirstName||'';
-            const customerName=(lastName+firstName).trim()||info.ordererLastNameKana||'---';
-            const orderDate=(order.orderDatetime||order.orderDate||'').slice(0,10);
-            const totalAmount=order.requestPrice||order.totalPrice||order.totalAmount||0;
-            const progress=order.orderProgress||0;
-            let category='食品・お菓子・天然生活';
-            const packages=order.PackageModelList||order.packageModelList||[];
-            let orderItems=[];
-            for(const pkg of packages){
-                const items=pkg.ItemModelList||pkg.itemModelList||[];
-                orderItems=orderItems.concat(items);
-            }
-            if(orderItems.length>0){
-                const firstItem=orderItems[0];
-                const itemName=firstItem.itemName||'';
-                if(itemName.includes('【天然生活】'))category='食品・お菓子・天然生活';
-                else if(itemName.includes('予約')||itemName.includes('予约')||itemName.includes('受注生産')||itemName.includes('入荷予定')||itemName.includes('発売予定'))category='アニメ・グッズ（预售）';
-                else if(itemName.includes('サプリ')||itemName.includes('健康'))category='健康食品';
-                else if(itemName.includes('美容')||itemName.includes('コスメ'))category='美容・コスメ・ボディケア';
-                else if(itemName.includes('アニメ')||itemName.includes('グッズ'))category='アニメ・グッズ（在库）';
-            }
-            allOrders.push({orderNumber:order.orderNumber||'',orderDate:orderDate,customerName:customerName,totalAmount:totalAmount,progress:progress,category:category});
-        }
-        updateStats();renderOrders();document.getElementById('lastUpdate').innerText='最后更新: '+new Date().toLocaleString();
-    }catch(e){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px;color:#ef4444;">❌ 请求失败: '+e.message+'</td></tr>';}
+let allOrders = [];
+let currentPage = 1;
+let itemsPerPage = 30;
+let currentSearch = '';
+let currentShippingFilter = 'all';
+let currentSort = {column: 'orderDate', order: 'desc'};
+
+function getCategoryClass(c){
+    const m = {
+        'アニメ・グッズ（预售）': 'category-preorder',
+        'アニメ・グッズ（在库）': 'category-instock',
+        '食品・お菓子・天然生活': 'category-food',
+        '健康食品': 'category-health',
+        '美容・コスメ・ボディケア': 'category-beauty',
+        '日用品雑貨': 'category-daily',
+        '医薬品': 'category-medicine',
+        '水・ソフトドリンク': 'category-drink',
+        'その他': 'category-other'
+    };
+    return m[c] || 'category-other';
 }
-function updateStats(){let total=allOrders.length,totalAmt=0;const cats=new Set();for(let o of allOrders){totalAmt+=o.totalAmount||0;if(o.category)cats.add(o.category)}const avg=total>0?totalAmt/total:0;document.getElementById('orderCount').innerText=total;document.getElementById('totalAmount').innerText='¥'+totalAmt.toLocaleString();document.getElementById('avgAmount').innerText='¥'+Math.round(avg).toLocaleString();document.getElementById('orderCategories').innerText=cats.size}
-function searchOrdersTable(){currentSearch=document.getElementById('searchInput').value.toLowerCase();currentPage=1;renderOrders()}
-function sortBy(col){if(currentSort.column===col){currentSort.order=currentSort.order==='asc'?'desc':'asc'}else{currentSort.column=col;currentSort.order='asc'}renderOrders()}
-function renderOrders(){let filtered=[...allOrders];if(currentSearch)filtered=filtered.filter(o=>(o.orderNumber||'').toLowerCase().includes(currentSearch)||(o.customerName||'').toLowerCase().includes(currentSearch));filtered.sort((a,b)=>{let va=a[currentSort.column],vb=b[currentSort.column];if(currentSort.column==='totalAmount'){va=parseFloat(va)||0;vb=parseFloat(vb)||0}if(va<vb)return currentSort.order==='asc'?-1:1;if(va>vb)return currentSort.order==='asc'?1:-1;return 0});displayOrders(filtered);renderPagination(filtered.length)}
-function displayOrders(orders){const tbody=document.getElementById('orderTableBody');const start=(currentPage-1)*itemsPerPage;const pageOrders=orders.slice(start,start+itemsPerPage);if(!pageOrders.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:40px;">无匹配订单</td></tr>';return}let html='';for(let o of pageOrders){const s=getOrderStatus(o.progress),cat=o.category||'食品・お菓子・天然生活';html+='<tr><td style="font-family:monospace;">'+escapeHtml(o.orderNumber)+'</td><td>'+escapeHtml(o.orderDate)+'</td><td>'+escapeHtml(o.customerName)+'</td><td style="font-weight:600;color:#bf0000;">¥'+(o.totalAmount||0).toLocaleString()+'</td><td><span class="category-badge '+getCategoryClass(cat)+'">'+getCategoryIcon(cat)+' '+cat+'</span></td><td><span class="status-badge '+s.cls+'">'+s.text+'</span></td></tr>'}tbody.innerHTML=html}
-function renderPagination(total){const pages=Math.ceil(total/itemsPerPage),div=document.getElementById('pagination');if(pages<=1){div.innerHTML='';return}let html='<button class="page-btn" onclick="changePage('+(currentPage-1)+')" '+(currentPage===1?'disabled':'')+'><i class="fas fa-chevron-left"></i> 上一页</button>';let s=Math.max(1,currentPage-2),e=Math.min(pages,currentPage+2);if(s>1){html+='<button class="page-btn" onclick="changePage(1)">1</button>';if(s>2)html+='<span style="padding:0 5px;">...</span>'}for(let i=s;i<=e;i++)html+='<button class="page-btn '+(i===currentPage?'active':'')+'" onclick="changePage('+i+')">'+i+'</button>';if(e<pages){if(e<pages-1)html+='<span style="padding:0 5px;">...</span>';html+='<button class="page-btn" onclick="changePage('+pages+')">'+pages+'</button>'}html+='<button class="page-btn" onclick="changePage('+(currentPage+1)+')" '+(currentPage===pages?'disabled':'')+'>下一页 <i class="fas fa-chevron-right"></i></button>';div.innerHTML=html}
-function changePage(p){const pages=Math.ceil(allOrders.length/itemsPerPage);if(p<1||p>pages)return;currentPage=p;renderOrders()}
-function exportCSV(){if(!allOrders.length){alert('无数据可导出');return}let filtered=[...allOrders];if(currentSearch)filtered=filtered.filter(o=>(o.orderNumber||'').toLowerCase().includes(currentSearch)||(o.customerName||'').toLowerCase().includes(currentSearch));const rows=[['订单号','订单日期','客户名称','金额','カテゴリ','状态']];for(let o of filtered)rows.push([o.orderNumber,o.orderDate,o.customerName,o.totalAmount,o.category||'食品・お菓子・天然生活',getOrderStatus(o.progress).text]);let csv='';for(let r of rows){csv+=r.join(',')+'\n'}const blob=new Blob(["\uFEFF"+csv],{type:'text/csv;charset=utf-8'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download='orders_'+new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.csv';link.click();URL.revokeObjectURL(link.href);alert('已导出 '+filtered.length+' 件订单')}
-function escapeHtml(s){if(!s)return '';return s.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
+
+function getCategoryIcon(c){
+    const m = {
+        'アニメ・グッズ（预售）': '🎬',
+        'アニメ・グッズ（在库）': '📦',
+        '食品・お菓子・天然生活': '🌿',
+        '健康食品': '🍎',
+        '美容・コスメ・ボディケア': '💄',
+        '日用品雑貨': '🏠',
+        '医薬品': '💊',
+        '水・ソフトドリンク': '🥤',
+        'その他': '📦'
+    };
+    return m[c] || '📦';
+}
+
+function getOrderStatus(p){
+    const m = {
+        100: {cls: 'status-pending', text: '待确认'},
+        200: {cls: 'status-pending', text: '已确认'},
+        300: {cls: 'status-paid', text: '已付款'},
+        400: {cls: 'status-shipped', text: '已发货'},
+        500: {cls: 'status-completed', text: '已完成'},
+        600: {cls: 'status-pending', text: '已取消'}
+    };
+    return m[p] || {cls: 'status-pending', text: '处理中'};
+}
+
+function setDefaultDates(){
+    const t = new Date().toISOString().split('T')[0];
+    if (!document.getElementById('startDate').value) document.getElementById('startDate').value = t;
+    if (!document.getElementById('endDate').value) document.getElementById('endDate').value = t;
+}
+
+function getDaysDiff(s, e){
+    return Math.ceil((new Date(e) - new Date(s)) / (1000 * 60 * 60 * 24));
+}
+
+async function searchOrders(){
+    const sd = document.getElementById('startDate').value;
+    const ed = document.getElementById('endDate').value;
+    if (!sd || !ed) { alert('请设置开始日期和结束日期'); return; }
+    if (getDaysDiff(sd, ed) > 63) { alert('検索期間は最大63日以内です'); return; }
+
+    const tbody = document.getElementById('orderTableBody');
+    tbody.innerHTML = '<tr><td colspan="8" class="loading-container"><div class="spinner"></div>正在搜索订单，请稍候...</td></tr>';
+
+    try {
+        // 1. 搜索订单号列表
+        const searchRes = await fetch('/api/orders/search', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                dateType: 1,
+                startDatetime: sd + 'T00:00:00+0900',
+                endDatetime: ed + 'T23:59:59+0900',
+                PaginationRequestModel: {
+                    requestRecordsAmount: 100,
+                    requestPage: 1,
+                    SortModelList: []
+                }
+            })
+        });
+        const searchData = await searchRes.json();
+
+        if (searchData.error) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#ef4444;">❌ ' + searchData.error + '</td></tr>';
+            return;
+        }
+
+        const msgList = searchData.messageModelList || [];
+        for (let msg of msgList) {
+            if (msg.messageType === 'ERROR') {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#ef4444;">❌ ' + msg.message + '</td></tr>';
+                return;
+            }
+        }
+
+        let orderNumbers = [];
+        if (searchData.orderNumberList && searchData.orderNumberList.length > 0) {
+            orderNumbers = searchData.orderNumberList;
+        } else if (searchData.orderModelList && searchData.orderModelList.length > 0) {
+            orderNumbers = searchData.orderModelList.map(o => o.orderNumber);
+        }
+
+        if (orderNumbers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;">该时间段内暂无订单</td></tr>';
+            allOrders = [];
+            updateStats();
+            return;
+        }
+
+        // 2. 获取订单详情
+        const detailRes = await fetch('/api/orders/get', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({orderNumberList: orderNumbers, version: 10})
+        });
+        const detailData = await detailRes.json();
+
+        if (detailData.error) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#ef4444;">❌ ' + detailData.error + '</td></tr>';
+            return;
+        }
+
+        allOrders = [];
+        const orders = detailData.OrderModelList || detailData.orderModelList || detailData.orders || [];
+
+        for (let order of orders) {
+            // 跳过取消订单
+            if (order.orderProgress === 600) continue;
+
+            // ===== 获取客户信息 =====
+            const ordererInfo = order.OrdererModel || order.ordererModel || {};
+            const familyName = ordererInfo.familyName || '';
+            const firstName = ordererInfo.firstName || '';
+            const customerName = (familyName + firstName).trim() || ordererInfo.familyNameKana || '---';
+
+            const orderDate = (order.orderDatetime || order.orderDate || '').slice(0, 10);
+            const progress = order.orderProgress || 0;
+
+            // ===== 🆕 计算商品金额（从商品明细中计算） =====
+            let itemTotal = 0;
+            const packages = order.PackageModelList || order.packageModelList || [];
+            let orderItems = [];
+            for (const pkg of packages) {
+                const items = pkg.ItemModelList || pkg.itemModelList || [];
+                for (const item of items) {
+                    const price = item.price || 0;
+                    const quantity = item.units || item.quantity || 1;
+                    itemTotal += price * quantity;
+                    orderItems.push(item);
+                }
+            }
+
+            // 备用：如果明细计算为0，使用 requestPrice - postagePrice
+            if (itemTotal === 0) {
+                const requestPrice = order.requestPrice || order.totalPrice || 0;
+                const shipping = order.postagePrice || order.shippingPrice || 0;
+                itemTotal = requestPrice - shipping;
+                if (itemTotal < 0) itemTotal = requestPrice;
+            }
+
+            // ===== 🆕 获取运费 =====
+            let shipping = order.postagePrice || order.shippingPrice || 0;
+            if (shipping === 0) {
+                for (const pkg of packages) {
+                    const pkgShipping = pkg.postagePrice || pkg.shippingPrice || pkg.carriage || 0;
+                    shipping += pkgShipping;
+                }
+            }
+
+            const totalAmount = itemTotal + shipping;
+
+            // ===== 判断分类 =====
+            let category = 'その他';
+            if (orderItems.length > 0) {
+                const firstItem = orderItems[0];
+                const itemName = firstItem.itemName || '';
+                // 检查是否在 ANIME_GENRES 中（由后端分类决定）
+                // 这里简化处理，使用后端返回的分类或根据关键词判断
+                if (itemName.includes('【天然生活】')) category = '食品・お菓子・天然生活';
+                else if (itemName.includes('予約') || itemName.includes('予约') || itemName.includes('受注生産')) category = 'アニメ・グッズ（预售）';
+                else if (itemName.includes('サプリ') || itemName.includes('健康')) category = '健康食品';
+                else if (itemName.includes('美容') || itemName.includes('コスメ')) category = '美容・コスメ・ボディケア';
+                else if (itemName.includes('アニメ') || itemName.includes('グッズ')) category = 'アニメ・グッズ（在库）';
+                else if (itemName.includes('医薬') || itemName.includes('薬')) category = '医薬品';
+                else if (itemName.includes('水') || itemName.includes('ドリンク') || itemName.includes('飲料')) category = '水・ソフトドリンク';
+                else if (itemName.includes('日用品') || itemName.includes('雑貨')) category = '日用品雑貨';
+            }
+
+            allOrders.push({
+                orderNumber: order.orderNumber || '',
+                orderDate: orderDate,
+                customerName: customerName,
+                itemTotal: itemTotal,
+                shipping: shipping,
+                totalAmount: totalAmount,
+                progress: progress,
+                category: category
+            });
+        }
+
+        updateStats();
+        renderOrders();
+        document.getElementById('lastUpdate').innerText = '最后更新: ' + new Date().toLocaleString();
+
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#ef4444;">❌ 请求失败: ' + e.message + '</td></tr>';
+    }
+}
+
+function updateStats(){
+    const total = allOrders.length;
+    let totalItemAmt = 0;
+    let totalShippingAmt = 0;
+    let totalAmt = 0;
+    const cats = new Set();
+
+    for (let o of allOrders) {
+        totalItemAmt += o.itemTotal || 0;
+        totalShippingAmt += o.shipping || 0;
+        totalAmt += o.totalAmount || 0;
+        if (o.category) cats.add(o.category);
+    }
+
+    const avg = total > 0 ? totalAmt / total : 0;
+
+    document.getElementById('orderCount').innerText = total;
+    document.getElementById('totalItemAmount').innerText = '¥' + totalItemAmt.toLocaleString();
+    document.getElementById('totalShippingAmount').innerText = '¥' + totalShippingAmt.toLocaleString();
+    document.getElementById('totalAmount').innerText = '¥' + totalAmt.toLocaleString();
+    document.getElementById('avgAmount').innerText = '¥' + Math.round(avg).toLocaleString();
+}
+
+function searchOrdersTable(){
+    currentSearch = document.getElementById('searchInput').value.toLowerCase();
+    currentShippingFilter = document.getElementById('shippingFilter').value;
+    currentPage = 1;
+    renderOrders();
+}
+
+function sortBy(col){
+    if (currentSort.column === col) {
+        currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort.column = col;
+        currentSort.order = 'asc';
+    }
+    renderOrders();
+}
+
+function renderOrders(){
+    // 1. 搜索过滤
+    let filtered = [...allOrders];
+    if (currentSearch) {
+        filtered = filtered.filter(o =>
+            (o.orderNumber || '').toLowerCase().includes(currentSearch) ||
+            (o.customerName || '').toLowerCase().includes(currentSearch)
+        );
+    }
+
+    // 2. 🆕 运费筛选
+    if (currentShippingFilter === 'has') {
+        filtered = filtered.filter(o => (o.shipping || 0) > 0);
+    } else if (currentShippingFilter === 'none') {
+        filtered = filtered.filter(o => (o.shipping || 0) === 0);
+    }
+
+    // 3. 排序
+    filtered.sort((a, b) => {
+        let va = a[currentSort.column];
+        let vb = b[currentSort.column];
+        if (['totalAmount', 'itemTotal', 'shipping'].includes(currentSort.column)) {
+            va = parseFloat(va) || 0;
+            vb = parseFloat(vb) || 0;
+        }
+        if (va < vb) return currentSort.order === 'asc' ? -1 : 1;
+        if (va > vb) return currentSort.order === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    displayOrders(filtered);
+    renderPagination(filtered.length);
+}
+
+function displayOrders(orders){
+    const tbody = document.getElementById('orderTableBody');
+    const start = (currentPage - 1) * itemsPerPage;
+    const pageOrders = orders.slice(start, start + itemsPerPage);
+
+    if (!pageOrders.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;">无匹配订单</td></tr>';
+        return;
+    }
+
+    let html = '';
+    for (let o of pageOrders) {
+        const s = getOrderStatus(o.progress);
+        const cat = o.category || 'その他';
+        const hasShipping = (o.shipping || 0) > 0;
+        const shippingLabel = hasShipping ? '有料' : '無料';
+
+        html += '<tr>' +
+            '<td style="font-family:monospace;font-size:12px;">' + escapeHtml(o.orderNumber) + '</td>' +
+            '<td>' + escapeHtml(o.orderDate) + '</td>' +
+            '<td>' + escapeHtml(o.customerName) + '</td>' +
+            '<td class="item-amt">¥' + (o.itemTotal || 0).toLocaleString() + '</td>' +
+            '<td class="shipping-amt">¥' + (o.shipping || 0).toLocaleString() + 
+            ' <span class="filter-tag ' + (hasShipping ? 'has-shipping' : 'no-shipping') + '">' + shippingLabel + '</span></td>' +
+            '<td class="amt">¥' + (o.totalAmount || 0).toLocaleString() + '</td>' +
+            '<td><span class="category-badge ' + getCategoryClass(cat) + '">' + getCategoryIcon(cat) + ' ' + cat + '</span></td>' +
+            '<td><span class="status-badge ' + s.cls + '">' + s.text + '</span></td>' +
+            '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function renderPagination(total){
+    const pages = Math.ceil(total / itemsPerPage);
+    const div = document.getElementById('pagination');
+    if (pages <= 1) { div.innerHTML = ''; return; }
+
+    let html = '<button class="page-btn" onclick="changePage(' + (currentPage - 1) + ')" ' + (currentPage === 1 ? 'disabled' : '') + '><i class="fas fa-chevron-left"></i> 上一页</button>';
+
+    let s = Math.max(1, currentPage - 2);
+    let e = Math.min(pages, currentPage + 2);
+
+    if (s > 1) {
+        html += '<button class="page-btn" onclick="changePage(1)">1</button>';
+        if (s > 2) html += '<span style="padding:0 5px;">...</span>';
+    }
+
+    for (let i = s; i <= e; i++) {
+        html += '<button class="page-btn ' + (i === currentPage ? 'active' : '') + '" onclick="changePage(' + i + ')">' + i + '</button>';
+    }
+
+    if (e < pages) {
+        if (e < pages - 1) html += '<span style="padding:0 5px;">...</span>';
+        html += '<button class="page-btn" onclick="changePage(' + pages + ')">' + pages + '</button>';
+    }
+
+    html += '<button class="page-btn" onclick="changePage(' + (currentPage + 1) + ')" ' + (currentPage === pages ? 'disabled' : '') + '>下一页 <i class="fas fa-chevron-right"></i></button>';
+    div.innerHTML = html;
+}
+
+function changePage(p){
+    const total = allOrders.length;
+    const pages = Math.ceil(total / itemsPerPage);
+    if (p < 1 || p > pages) return;
+    currentPage = p;
+    renderOrders();
+}
+
+function exportCSV(){
+    if (!allOrders.length) { alert('无数据可导出'); return; }
+
+    // 应用当前筛选
+    let filtered = [...allOrders];
+    if (currentSearch) {
+        filtered = filtered.filter(o =>
+            (o.orderNumber || '').toLowerCase().includes(currentSearch) ||
+            (o.customerName || '').toLowerCase().includes(currentSearch)
+        );
+    }
+    if (currentShippingFilter === 'has') {
+        filtered = filtered.filter(o => (o.shipping || 0) > 0);
+    } else if (currentShippingFilter === 'none') {
+        filtered = filtered.filter(o => (o.shipping || 0) === 0);
+    }
+
+    const rows = [['订单号', '订单日期', '客户名称', '商品金额', '运费', '总金额', 'カテゴリ', '状态']];
+    for (let o of filtered) {
+        rows.push([
+            o.orderNumber,
+            o.orderDate,
+            o.customerName,
+            o.itemTotal || 0,
+            o.shipping || 0,
+            o.totalAmount || 0,
+            o.category || 'その他',
+            getOrderStatus(o.progress).text
+        ]);
+    }
+
+    let csv = '';
+    for (let r of rows) {
+        csv += r.join(',') + '\n';
+    }
+
+    const blob = new Blob(["\uFEFF" + csv], {type: 'text/csv;charset=utf-8'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'orders_' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+    alert('已导出 ' + filtered.length + ' 件订单');
+}
+
+function escapeHtml(s){
+    if (!s) return '';
+    return String(s).replace(/[&<>]/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'})[m]);
+}
+
 setDefaultDates();
 </script>
 </body>
