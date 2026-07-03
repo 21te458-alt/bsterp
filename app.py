@@ -195,6 +195,19 @@ def get_worksheet(file_key, sheet_id):
     sh = gc.open_by_key(file_key)
     return sh.get_worksheet_by_id(int(sheet_id))
 
+def get_worksheet_by_name(file_key, sheet_name):
+    """根据工作表名称获取工作表对象"""
+    try:
+        sh = gc.open_by_key(file_key)
+        return sh.worksheet(sheet_name)
+    except gspread.WorksheetNotFound:
+        # 如果找不到，回退到默认的"在庫"
+        print(f"⚠️ 找不到工作表 '{sheet_name}'，回退到 '在庫'")
+        return sh.worksheet('在庫')
+    except Exception as e:
+        print(f"❌ 获取工作表失败: {e}")
+        raise
+
 def get_general_stock_worksheet():
     """获取一般库存表"""
     sh = gc.open_by_key(FILE_IDS['file_b'])
@@ -211,7 +224,7 @@ def get_order_worksheet():
     return sh.worksheet('销售记录')
 
 # ============================================================
-# 第四部分：Google Sheets API 路由（新增）
+# 第四部分：Google Sheets API 路由（支持双表）
 # ============================================================
 
 @app.route('/api/sheets-info')
@@ -222,14 +235,16 @@ def get_sheets_info_api():
 
 @app.route('/api/gs-stock-stats')
 def get_gs_stock_stats():
-    """获取Google Sheets库存统计数据"""
-    cache_key = 'gs_stock_stats'
+    """获取Google Sheets库存统计数据（支持指定工作表）"""
+    sheet_name = request.args.get('sheet_name', '在庫')
+    cache_key = f'gs_stock_stats_{sheet_name}'
     cached_data = gs_cache.get(cache_key)
     if cached_data is not None:
         return jsonify(cached_data)
     
     try:
-        stock_ws = get_general_stock_worksheet()
+        # 根据 sheet_name 获取对应的工作表
+        stock_ws = get_worksheet_by_name(FILE_IDS['file_b'], sheet_name)
         stock_data = stock_ws.get_all_values()
         
         if len(stock_data) < 2:
@@ -329,17 +344,18 @@ def get_gs_stock_stats():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/gs-sheet/<path:sheet_key>')
-def api_get_gs_sheet_data(sheet_key):
-    """获取Google Sheets表格数据"""
-    cache_key = f'gs_sheet_data_{sheet_key}'
+@app.route('/api/gs-sheet/<path:file_key>')
+def api_get_gs_sheet_data(file_key):
+    """获取Google Sheets表格数据（支持指定工作表）"""
+    sheet_name = request.args.get('sheet_name', '在庫')
+    cache_key = f'gs_sheet_data_{file_key}_{sheet_name}'
     cached_data = gs_cache.get(cache_key)
     if cached_data is not None:
         return jsonify(cached_data)
     
     try:
-        file_key, sheet_id = sheet_key.split('|')
-        worksheet = get_worksheet(file_key, sheet_id)
+        # 根据 sheet_name 获取对应的工作表
+        worksheet = get_worksheet_by_name(file_key, sheet_name)
         data = worksheet.get_all_values()
         if not data:
             result = {'success': True, 'headers': [], 'data': [], 'total': 0}
@@ -359,10 +375,10 @@ def api_get_gs_sheet_data(sheet_key):
             filtered_row = [row[i] if i < len(row) else '' for i in valid_indices]
             filtered_data.append(filtered_row)
         
-        # 为"在庫"表添加"在库金额"列
+        # 为"在庫"或"预售"表添加"在库金额"列
         if file_key == FILE_IDS['file_b']:
             sheet_title = worksheet.title
-            if sheet_title == '在庫':
+            if sheet_title in ['在庫', '预售']:
                 price_col_idx = None
                 stock_col_idx = None
                 for i, h in enumerate(filtered_headers):
@@ -412,12 +428,12 @@ def api_get_gs_sheet_data(sheet_key):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/gs-sheet/<path:sheet_key>/row', methods=['POST'])
-def api_add_gs_row(sheet_key):
-    """添加Google Sheets行"""
+@app.route('/api/gs-sheet/<path:file_key>/row', methods=['POST'])
+def api_add_gs_row(file_key):
+    """添加Google Sheets行（支持指定工作表）"""
     try:
-        file_key, sheet_id = sheet_key.split('|')
-        worksheet = get_worksheet(file_key, sheet_id)
+        sheet_name = request.args.get('sheet_name', '在庫')
+        worksheet = get_worksheet_by_name(file_key, sheet_name)
         new_row = request.json.get('row_data', [])
         worksheet.append_row(new_row)
         gs_cache.clear()
@@ -425,12 +441,12 @@ def api_add_gs_row(sheet_key):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/gs-sheet/<path:sheet_key>/cell', methods=['PUT'])
-def api_update_gs_cell(sheet_key):
-    """更新Google Sheets单元格"""
+@app.route('/api/gs-sheet/<path:file_key>/cell', methods=['PUT'])
+def api_update_gs_cell(file_key):
+    """更新Google Sheets单元格（支持指定工作表）"""
     try:
-        file_key, sheet_id = sheet_key.split('|')
-        worksheet = get_worksheet(file_key, sheet_id)
+        sheet_name = request.args.get('sheet_name', '在庫')
+        worksheet = get_worksheet_by_name(file_key, sheet_name)
         row = request.json.get('row')
         col = request.json.get('col')
         value = request.json.get('value')
@@ -440,24 +456,24 @@ def api_update_gs_cell(sheet_key):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/gs-sheet/<path:sheet_key>/row/<int:row_num>', methods=['DELETE'])
-def api_delete_gs_row(sheet_key, row_num):
-    """删除Google Sheets行"""
+@app.route('/api/gs-sheet/<path:file_key>/row/<int:row_num>', methods=['DELETE'])
+def api_delete_gs_row(file_key, row_num):
+    """删除Google Sheets行（支持指定工作表）"""
     try:
-        file_key, sheet_id = sheet_key.split('|')
-        worksheet = get_worksheet(file_key, sheet_id)
+        sheet_name = request.args.get('sheet_name', '在庫')
+        worksheet = get_worksheet_by_name(file_key, sheet_name)
         worksheet.delete_rows(row_num + 1)
         gs_cache.clear()
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/gs-sheet/<path:sheet_key>/export')
-def export_gs_to_excel(sheet_key):
-    """导出Google Sheets为Excel"""
+@app.route('/api/gs-sheet/<path:file_key>/export')
+def export_gs_to_excel(file_key):
+    """导出Google Sheets为Excel（支持指定工作表）"""
     try:
-        file_key, sheet_id = sheet_key.split('|')
-        worksheet = get_worksheet(file_key, sheet_id)
+        sheet_name = request.args.get('sheet_name', '在庫')
+        worksheet = get_worksheet_by_name(file_key, sheet_name)
         data = worksheet.get_all_values()
         if not data or len(data) < 2:
             return jsonify({'success': False, 'error': '无数据可导出'})
@@ -466,16 +482,18 @@ def export_gs_to_excel(sheet_key):
         rows = data[1:]
         df = pd.DataFrame(rows, columns=headers)
         
+        # 获取工作表信息用于命名
         sheets_info = get_all_sheets_info()
+        sheet_key = f"{file_key}|{worksheet.id}"
         sheet_info = next((s for s in sheets_info if s['id'] == sheet_key), None)
-        sheet_name = sheet_info['title'] if sheet_info else '数据表'
+        sheet_display_name = sheet_info['title'] if sheet_info else sheet_name
         
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name=sheet_name[:31], index=False)
+            df.to_excel(writer, sheet_name=sheet_display_name[:31], index=False)
         
         output.seek(0)
-        filename = f"{sheet_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        filename = f"{sheet_display_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         
         return send_file(
             output,
