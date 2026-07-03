@@ -7,9 +7,16 @@ import json
 import concurrent.futures
 import time
 from datetime import datetime, timedelta
-from flask import Flask, send_file, request, jsonify
+from flask import Flask, send_file, request, jsonify, render_template
 from flask_cors import CORS
 from dotenv import load_dotenv
+
+# ===== Google Sheets 相关导入 =====
+import gspread
+from google.oauth2.service_account import Credentials
+import pandas as pd
+import io
+import re
 
 # ===== 加载环境变量 =====
 load_dotenv()
@@ -18,13 +25,15 @@ app = Flask(__name__)
 CORS(app)
 app.config['JSON_AS_ASCII'] = False
 
-# ===== 从环境变量读取敏感信息 =====
+# ============================================================
+# 第一部分：乐天RMS API 配置（原有）
+# ============================================================
+
 SERVICE_SECRET = os.environ.get('SERVICE_SECRET', 'SP406647_AaHdEvRVKrO74RDh')
 LICENSE_KEY = os.environ.get('LICENSE_KEY', 'SL406647_UUcHdvDI3ZNP0Br3')
 SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-me')
 app.config['SECRET_KEY'] = SECRET_KEY
 
-# ===== 数据文件路径（兼容 Render 部署） =====
 DATA_DIR = os.environ.get('DATA_DIR', os.path.dirname(os.path.abspath(__file__)))
 STOCK_RECORDS_FILE = os.path.join(DATA_DIR, 'stock_records.json')
 
@@ -38,11 +47,9 @@ def get_auth_header():
     encoded = base64.b64encode(auth_string.encode()).decode()
     return f"ESA {encoded}"
 
-# 复用TCP连接
 session = requests.Session()
 session.headers.update({'Authorization': get_auth_header()})
 
-# 商品列表缓存
 _products_cache = {'data': None, 'time': 0}
 _inventory_cache = {'data': None, 'loading': False, 'progress': 0, 'total': 0, 'last_update': None}
 PRODUCTS_CACHE_TTL = 300
@@ -57,54 +64,471 @@ ANIME_GENRES = [
     '403755', '207314', '303656'
 ]
 
+# ============================================================
+# 第二部分：Google Sheets 配置（新增）
+# ============================================================
+
+# Google Sheets API 认证
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+
+# 从 render_credentials.json 或环境变量加载凭证
+try:
+    credentials = Credentials.from_service_account_file('render_credentials.json', scopes=SCOPES)
+    print("✓ 成功从 render_credentials.json 文件加载凭证")
+except Exception as e:
+    print(f"✗ 从文件加载凭证失败: {e}")
+    credentials_json = os.environ.get('GOOGLE_CREDENTIALS')
+    if credentials_json:
+        try:
+            creds_dict = json.loads(credentials_json)
+            credentials = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+            print("✓ 使用备用方案：从环境变量加载凭证成功")
+        except Exception as env_e:
+            print(f"✗ 从环境变量加载凭证也失败: {env_e}")
+            raise
+    else:
+        raise Exception("无法找到任何有效的凭证来源，应用启动失败")
+
+gc = gspread.authorize(credentials)
+
+# Google Sheets 文件ID
+FILE_IDS = {
+    'file_a': '1zLLFiiZ8Vu89rW1QQ3JlW9EDKSOSd2u7DAkYA5dd1j4',
+    'file_b': '1anuXNRZFwerO7Gxw9kvpsxglkphbQ65JEXKSHCsZrrs'
+}
+
+# 工作表名称
+ORDER_WORKSHEET_NAME = '销售记录'
+STOCK_WORKSHEET_NAME = '动漫记录'
+GENERAL_STOCK_NAME = '在庫'
+
+# ============================================================
+# 第三部分：Google Sheets 函数（新增）
+# ============================================================
+
+class SimpleCache:
+    """简单的缓存系统"""
+    def __init__(self, default_ttl=30):
+        self.cache = {}
+        self.ttl = default_ttl
+    
+    def get(self, key):
+        if key in self.cache:
+            data, timestamp = self.cache[key]
+            if datetime.now() - timestamp < timedelta(seconds=self.ttl):
+                return data
+            else:
+                del self.cache[key]
+        return None
+    
+    def set(self, key, value):
+        self.cache[key] = (value, datetime.now())
+    
+    def clear(self):
+        self.cache.clear()
+
+# 创建Google Sheets专用缓存
+gs_cache = SimpleCache(default_ttl=30)
+
+_sheets_cache = None
+
+def get_all_sheets_info():
+    """获取所有文件中的所有工作表"""
+    global _sheets_cache
+    if _sheets_cache is not None:
+        return _sheets_cache
+    
+    sheets_info = []
+    
+    try:
+        sh_a = gc.open_by_key(FILE_IDS['file_a'])
+        for sheet in sh_a.worksheets():
+            if sheet.title == '销售记录':
+                sheet_type = 'order'
+                file_name = '📦 订单表'
+            elif sheet.title == '动漫记录':
+                sheet_type = 'stock'
+                file_name = '🎬 动漫库存表'
+            else:
+                sheet_type = 'normal'
+                file_name = '📄 文件A - ' + sheet.title
+            
+            sheets_info.append({
+                'id': f"{FILE_IDS['file_a']}|{sheet.id}",
+                'title': sheet.title,
+                'file_name': file_name,
+                'file_key': FILE_IDS['file_a'],
+                'sheet_id': sheet.id,
+                'type': sheet_type
+            })
+        
+        sh_b = gc.open_by_key(FILE_IDS['file_b'])
+        for sheet in sh_b.worksheets():
+            if sheet.title == '在庫':
+                sheet_type = 'stock'
+                file_name = '📝 一般库存表'
+            elif sheet.title == '楽天-予約商品登録リスト':
+                sheet_type = 'reserve'
+                file_name = '📋 预订商品表'
+            else:
+                sheet_type = 'normal'
+                file_name = '📄 文件B - ' + sheet.title
+            
+            sheets_info.append({
+                'id': f"{FILE_IDS['file_b']}|{sheet.id}",
+                'title': sheet.title,
+                'file_name': file_name,
+                'file_key': FILE_IDS['file_b'],
+                'sheet_id': sheet.id,
+                'type': sheet_type
+            })
+        
+        _sheets_cache = sheets_info
+        return sheets_info
+        
+    except Exception as e:
+        print(f"获取工作表列表出错: {e}")
+        return sheets_info
+
+def get_worksheet(file_key, sheet_id):
+    """获取工作表对象"""
+    sh = gc.open_by_key(file_key)
+    return sh.get_worksheet_by_id(int(sheet_id))
+
+def get_general_stock_worksheet():
+    """获取一般库存表"""
+    sh = gc.open_by_key(FILE_IDS['file_b'])
+    return sh.worksheet('在庫')
+
+def get_stock_worksheet():
+    """获取库存工作表（动漫记录）"""
+    sh = gc.open_by_key(FILE_IDS['file_a'])
+    return sh.worksheet('动漫记录')
+
+def get_order_worksheet():
+    """获取订单工作表"""
+    sh = gc.open_by_key(FILE_IDS['file_a'])
+    return sh.worksheet('销售记录')
+
+# ============================================================
+# 第四部分：Google Sheets API 路由（新增）
+# ============================================================
+
+@app.route('/api/sheets-info')
+def get_sheets_info_api():
+    """获取所有工作表信息"""
+    sheets_info = get_all_sheets_info()
+    return jsonify(sheets_info)
+
+@app.route('/api/gs-stock-stats')
+def get_gs_stock_stats():
+    """获取Google Sheets库存统计数据"""
+    cache_key = 'gs_stock_stats'
+    cached_data = gs_cache.get(cache_key)
+    if cached_data is not None:
+        return jsonify(cached_data)
+    
+    try:
+        stock_ws = get_general_stock_worksheet()
+        stock_data = stock_ws.get_all_values()
+        
+        if len(stock_data) < 2:
+            result = {
+                'success': True,
+                'total_items': 0,
+                'total_quantity': 0,
+                'total_value': 0,
+                'total_purchase_value': 0,
+                'stock_rate': 0,
+                'low_stock_count': 0,
+                'out_stock_count': 0
+            }
+            gs_cache.set(cache_key, result)
+            return jsonify(result)
+        
+        headers = stock_data[0]
+        
+        # 查找列索引
+        jan_idx = None
+        name_idx = None
+        maker_idx = None
+        price_idx = None
+        stock_idx = None
+        in_qty_idx = None
+        
+        for i, h in enumerate(headers):
+            if h == 'JAN CODE':
+                jan_idx = i
+            elif h == '商品名':
+                name_idx = i
+            elif h == 'メーカー':
+                maker_idx = i
+            elif h == '仕入れ価格（個/税抜）':
+                price_idx = i
+            elif h == '残り在庫':
+                stock_idx = i
+            elif h == '入庫数量':
+                in_qty_idx = i
+        
+        total_quantity = 0
+        total_value = 0
+        total_purchase_value = 0
+        total_in_qty = 0
+        low_stock_count = 0
+        out_stock_count = 0
+        
+        for row in stock_data[1:]:
+            price = 0
+            if price_idx is not None and price_idx < len(row) and row[price_idx]:
+                try:
+                    price = float(re.sub(r'[^\d.-]', '', str(row[price_idx])))
+                except:
+                    price = 0
+            
+            stock_qty = 0
+            if stock_idx is not None and stock_idx < len(row) and row[stock_idx]:
+                try:
+                    stock_qty = int(re.sub(r'[^\d]', '', str(row[stock_idx])))
+                except:
+                    stock_qty = 0
+            
+            in_qty = 0
+            if in_qty_idx is not None and in_qty_idx < len(row) and row[in_qty_idx]:
+                try:
+                    in_qty = int(re.sub(r'[^\d]', '', str(row[in_qty_idx])))
+                except:
+                    in_qty = 0
+            
+            total_quantity += stock_qty
+            total_value += price * stock_qty
+            
+            if in_qty > 0:
+                total_in_qty += in_qty
+                total_purchase_value += price * in_qty
+            
+            if stock_qty <= 0:
+                out_stock_count += 1
+            elif stock_qty <= 5:
+                low_stock_count += 1
+        
+        stock_rate = (total_quantity / total_in_qty * 100) if total_in_qty > 0 else 0
+        
+        result = {
+            'success': True,
+            'total_items': len(stock_data) - 1,
+            'total_quantity': total_quantity,
+            'total_value': total_value,
+            'total_purchase_value': total_purchase_value,
+            'stock_rate': stock_rate,
+            'low_stock_count': low_stock_count,
+            'out_stock_count': out_stock_count
+        }
+        gs_cache.set(cache_key, result)
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/gs-sheet/<path:sheet_key>')
+def api_get_gs_sheet_data(sheet_key):
+    """获取Google Sheets表格数据"""
+    cache_key = f'gs_sheet_data_{sheet_key}'
+    cached_data = gs_cache.get(cache_key)
+    if cached_data is not None:
+        return jsonify(cached_data)
+    
+    try:
+        file_key, sheet_id = sheet_key.split('|')
+        worksheet = get_worksheet(file_key, sheet_id)
+        data = worksheet.get_all_values()
+        if not data:
+            result = {'success': True, 'headers': [], 'data': [], 'total': 0}
+            gs_cache.set(cache_key, result)
+            return jsonify(result)
+        
+        original_headers = data[0]
+        valid_indices = []
+        filtered_headers = []
+        for i, h in enumerate(original_headers):
+            if h and not str(h).startswith('¥') and 'Unnamed' not in str(h):
+                valid_indices.append(i)
+                filtered_headers.append(h)
+        
+        filtered_data = []
+        for row in data[1:]:
+            filtered_row = [row[i] if i < len(row) else '' for i in valid_indices]
+            filtered_data.append(filtered_row)
+        
+        # 为"在庫"表添加"在库金额"列
+        if file_key == FILE_IDS['file_b']:
+            sheet_title = worksheet.title
+            if sheet_title == '在庫':
+                price_col_idx = None
+                stock_col_idx = None
+                for i, h in enumerate(filtered_headers):
+                    if h == '仕入れ価格（個/税抜）':
+                        price_col_idx = i
+                    elif h == '残り在庫':
+                        stock_col_idx = i
+                
+                if price_col_idx is not None and stock_col_idx is not None:
+                    sold_col_idx = None
+                    for i, h in enumerate(filtered_headers):
+                        if h == '售出':
+                            sold_col_idx = i
+                            break
+                    
+                    if sold_col_idx is not None:
+                        insert_position = sold_col_idx + 1
+                    else:
+                        insert_position = stock_col_idx + 1
+                    
+                    filtered_headers.insert(insert_position, '在库金额')
+                    
+                    for row in filtered_data:
+                        price_str = row[price_col_idx] if price_col_idx < len(row) else '0'
+                        stock_str = row[stock_col_idx] if stock_col_idx < len(row) else '0'
+                        
+                        try:
+                            price_val = float(re.sub(r'[^\d.-]', '', str(price_str))) if price_str else 0
+                        except:
+                            price_val = 0
+                        try:
+                            stock_qty = int(re.sub(r'[^\d]', '', str(stock_str))) if stock_str else 0
+                        except:
+                            stock_qty = 0
+                        
+                        amount = price_val * stock_qty
+                        row.insert(insert_position, f'¥{amount:,.0f}' if amount > 0 else '¥0')
+        
+        result = {
+            'success': True,
+            'headers': filtered_headers,
+            'data': filtered_data,
+            'total': len(filtered_data)
+        }
+        gs_cache.set(cache_key, result)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/gs-sheet/<path:sheet_key>/row', methods=['POST'])
+def api_add_gs_row(sheet_key):
+    """添加Google Sheets行"""
+    try:
+        file_key, sheet_id = sheet_key.split('|')
+        worksheet = get_worksheet(file_key, sheet_id)
+        new_row = request.json.get('row_data', [])
+        worksheet.append_row(new_row)
+        gs_cache.clear()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/gs-sheet/<path:sheet_key>/cell', methods=['PUT'])
+def api_update_gs_cell(sheet_key):
+    """更新Google Sheets单元格"""
+    try:
+        file_key, sheet_id = sheet_key.split('|')
+        worksheet = get_worksheet(file_key, sheet_id)
+        row = request.json.get('row')
+        col = request.json.get('col')
+        value = request.json.get('value')
+        worksheet.update_cell(row, col, value)
+        gs_cache.clear()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/gs-sheet/<path:sheet_key>/row/<int:row_num>', methods=['DELETE'])
+def api_delete_gs_row(sheet_key, row_num):
+    """删除Google Sheets行"""
+    try:
+        file_key, sheet_id = sheet_key.split('|')
+        worksheet = get_worksheet(file_key, sheet_id)
+        worksheet.delete_rows(row_num + 1)
+        gs_cache.clear()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/gs-sheet/<path:sheet_key>/export')
+def export_gs_to_excel(sheet_key):
+    """导出Google Sheets为Excel"""
+    try:
+        file_key, sheet_id = sheet_key.split('|')
+        worksheet = get_worksheet(file_key, sheet_id)
+        data = worksheet.get_all_values()
+        if not data or len(data) < 2:
+            return jsonify({'success': False, 'error': '无数据可导出'})
+        
+        headers = data[0]
+        rows = data[1:]
+        df = pd.DataFrame(rows, columns=headers)
+        
+        sheets_info = get_all_sheets_info()
+        sheet_info = next((s for s in sheets_info if s['id'] == sheet_key), None)
+        sheet_name = sheet_info['title'] if sheet_info else '数据表'
+        
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name=sheet_name[:31], index=False)
+        
+        output.seek(0)
+        filename = f"{sheet_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+# ============================================================
+# 第五部分：乐天RMS API 路由（原有，保持不变）
+# ============================================================
+
 # ========== カテゴリ分類関数 ==========
 def determine_category(title, genre_id, item_type, purchasable_period):
     """根据商品信息判断分类（8分类）"""
-    
-    # 1. 食品・お菓子・天然生活
     food_keywords = ['【天然生活】', '天然生活', '食品', 'お菓子', 'スイーツ', 'ケーキ', 'ラーメン', 'カレー', 'うどん', 'そば', 'パスタ', 'スープ', 'お茶', '紅茶', 'コーヒー', 'ジュース', 'ゼリー', 'プリン', 'アイス', 'クッキー', 'チョコ', 'キャンディ', 'ナッツ', 'ドライフルーツ', 'せんべい', 'かりんとう', 'ようかん', 'まんじゅう', 'どら焼き', 'たい焼き']
     for kw in food_keywords:
         if kw in title:
             return '食品・お菓子・天然生活'
     
-    # 2. 健康食品
     health_keywords = ['健康食品', 'サプリ', 'サプリメント', '青汁', '酵素', 'NMN', '乳酸菌', 'プロテイン', 'ビタミン', 'カルシウム', '鉄分', 'マルチビタミン', 'フォルスコリ', 'プラセンタ', 'コラーゲン', 'HMB', 'プロテオグリカン', 'じゃばら']
     for kw in health_keywords:
         if kw in title:
             return '健康食品'
     
-    # 3. 美容・コスメ・ボディケア
     beauty_keywords = ['美容', 'コスメ', 'ボディケア', '化粧品', 'クリーム', 'ジェル', '日焼け止め', 'マッサージ', 'ローション', '美容液', '洗顔', 'シャンプー', 'リンス', 'コンディショナー', 'ボディソープ']
     for kw in beauty_keywords:
         if kw in title:
             return '美容・コスメ・ボディケア'
     
-    # 4. 日用品雑貨
     daily_keywords = ['日用品', '雑貨', '手袋', 'マフラー', 'ストール', 'タオル', 'バッグ', 'ポーチ', 'マスク', 'ハンドジェル']
     for kw in daily_keywords:
         if kw in title:
             return '日用品雑貨'
     
-    # 5. 医薬品
     medicine_keywords = ['医薬品', '薬', '第1類', '第2類', '第3類', 'ロキソプロフェン', '風邪薬', '胃薬', '鎮痛剤', '解熱剤']
     for kw in medicine_keywords:
         if kw in title:
             return '医薬品'
     
-    # 6. 水・ソフトドリンク
     drink_keywords = ['水', 'ドリンク', '飲料', 'ソフトドリンク', 'ミネラルウォーター', '炭酸水', 'エナジードリンク', 'スポーツドリンク']
     for kw in drink_keywords:
         if kw in title:
             return '水・ソフトドリンク'
     
-    # 7. アニメ・グッズ（根据purchasablePeriod区分预售/在库）
     if genre_id in ANIME_GENRES:
         if purchasable_period and purchasable_period.get('start'):
             return 'アニメ・グッズ（预售）'
         else:
             return 'アニメ・グッズ（在库）'
     
-    # 8. その他
     return 'その他'
 
 def get_category_info(category):
@@ -129,9 +553,7 @@ ORDER_API_HEADERS = {'Content-Type': 'application/json; charset=utf-8'}
 
 # ========== 入库/出库记录管理 ==========
 def load_stock_records():
-    """加载库存记录（同时支持入库和出库）"""
     default = {'出库记录': [], '入库记录': []}
-    
     if os.path.exists(STOCK_RECORDS_FILE):
         try:
             with open(STOCK_RECORDS_FILE, 'r', encoding='utf-8') as f:
@@ -143,34 +565,23 @@ def load_stock_records():
         except (json.JSONDecodeError, IOError) as e:
             print(f"读取数据文件失败: {e}，使用默认数据")
             return default
-    
     save_stock_records(default)
     return default
 
 def save_stock_records(records):
-    """保存库存记录"""
     if '出库记录' not in records:
         records['出库记录'] = []
     if '入库记录' not in records:
         records['入库记录'] = []
-    
     try:
         with open(STOCK_RECORDS_FILE, 'w', encoding='utf-8') as f:
             json.dump(records, f, ensure_ascii=False, indent=2)
         return True
     except Exception as e:
         print(f"保存数据失败: {e}")
-        backup_file = STOCK_RECORDS_FILE + '.backup'
-        try:
-            with open(backup_file, 'w', encoding='utf-8') as f:
-                json.dump(records, f, ensure_ascii=False, indent=2)
-            print(f"数据已保存到备份文件: {backup_file}")
-        except Exception as e2:
-            print(f"备份也失败: {e2}")
         return False
 
 def get_current_stock(manage_number):
-    """获取当前库存"""
     url = f"https://api.rms.rakuten.co.jp/es/2.1/inventories/manage-numbers/{manage_number}/variants/{manage_number}"
     for attempt in range(3):
         try:
@@ -187,13 +598,10 @@ def get_current_stock(manage_number):
     return 0
 
 def update_inventory_direct(manage_number, change):
-    """直接更新库存（change为正数入库，负数出库）"""
     current_stock = get_current_stock(manage_number)
     new_stock = max(0, current_stock + change)
-    
     url = f"https://api.rms.rakuten.co.jp/es/2.1/inventories/manage-numbers/{manage_number}/variants/{manage_number}"
     body = {'quantity': new_stock, 'mode': 'set'}
-    
     for attempt in range(3):
         try:
             response = session.put(url, json=body, timeout=30)
@@ -225,27 +633,22 @@ def fetch_products():
         
         try:
             response = session.get(url, params=params, timeout=30)
-            
             if response.status_code == 429:
                 print(f"  API限流，等待3秒后重试...")
                 time.sleep(3)
                 continue
-            
             if response.status_code != 200:
                 print(f"请求失败: {response.status_code}")
                 break
-            
             data = response.json()
             results = data.get('results', [])
             if not results:
                 break
-            
             for result in results:
                 item = result.get('item', {})
                 manage_number = item.get('manageNumber', '')
                 if not manage_number:
                     continue
-                
                 price = item.get('price', 0)
                 if not price or price == 0:
                     variants = item.get('variants', {})
@@ -254,14 +657,11 @@ def fetch_products():
                         if std_price:
                             price = int(std_price)
                             break
-                
                 title = item.get('title', '无商品名')
                 genre_id = item.get('genreId', '')
                 item_type = item.get('itemType', 'NORMAL')
                 purchasable_period = item.get('purchasablePeriod', {})
-                
                 category = determine_category(title, genre_id, item_type, purchasable_period)
-                
                 all_products.append({
                     'manageNumber': manage_number,
                     'name': title,
@@ -272,14 +672,11 @@ def fetch_products():
                     'status': '贩售中',
                     'stock': 0
                 })
-            
             print(f"  已获取 {len(all_products)} 件商品...")
-            
             if len(results) < hits_per_page:
                 break
             offset += hits_per_page
             time.sleep(0.3)
-            
         except Exception as e:
             print(f"错误: {e}")
             break
@@ -297,9 +694,7 @@ def get_cached_products(force_refresh=False):
     print(f"使用缓存（{int(now - _products_cache['time'])}秒前）")
     return _products_cache['data']
 
-# ========== 获取单个商品库存（带重试） ==========
 def get_single_stock(manage_number):
-    """获取单个商品库存（带重试）"""
     url = f"https://api.rms.rakuten.co.jp/es/2.1/inventories/manage-numbers/{manage_number}/variants/{manage_number}"
     for attempt in range(3):
         try:
@@ -318,16 +713,15 @@ def get_single_stock(manage_number):
                 continue
             return {'manageNumber': manage_number, 'stock': 0}
 
-# ========== 商品API ==========
+# ========== 乐天RMS API 路由 ==========
+
 @app.route('/api/products', methods=['GET'])
 def get_products():
     force_refresh = request.args.get('refresh', 'false').lower() == 'true'
     return jsonify(get_cached_products(force_refresh))
 
-# ========== 🆕 获取单个商品库存（前端按需调用） ==========
 @app.route('/api/inventory/single/<manage_number>', methods=['GET'])
 def get_single_inventory(manage_number):
-    """获取单个商品库存（供前端分批加载）"""
     try:
         stock_data = get_single_stock(manage_number)
         return jsonify({
@@ -337,23 +731,16 @@ def get_single_inventory(manage_number):
     except Exception as e:
         return jsonify({'manageNumber': manage_number, 'stock': 0, 'error': str(e)}), 500
 
-# ========== 🆕 批量获取库存（前端分批请求，避免超时） ==========
 @app.route('/api/inventory/batch', methods=['POST'])
 def get_inventory_batch():
-    """批量获取库存（前端传入商品列表，每批最多100件）"""
     try:
         data = request.json
         manage_numbers = data.get('manageNumbers', [])
-        
         if not manage_numbers:
             return jsonify([])
-        
-        # 限制单次请求数量，避免超时
         if len(manage_numbers) > 100:
             return jsonify({'error': 'Too many items, max 100 per request'}), 400
-        
         results = []
-        # 使用小线程池，避免限流
         with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
             futures = {executor.submit(get_single_stock, mn): mn for mn in manage_numbers}
             for future in concurrent.futures.as_completed(futures):
@@ -363,53 +750,38 @@ def get_inventory_batch():
                 except Exception as e:
                     mn = futures[future]
                     results.append({'manageNumber': mn, 'stock': 0, 'error': str(e)})
-        
         return jsonify(results)
-        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ========== 🆕 异步加载库存（后台执行，轮询进度） ==========
 @app.route('/api/inventory/start-load', methods=['POST'])
 def start_inventory_load():
-    """启动后台库存加载任务"""
     global _inventory_cache
-    
     if _inventory_cache['loading']:
         return jsonify({'status': 'loading', 'progress': _inventory_cache['progress'], 'total': _inventory_cache['total']})
-    
     products = get_cached_products()
     _inventory_cache['loading'] = True
     _inventory_cache['progress'] = 0
     _inventory_cache['total'] = len(products)
     _inventory_cache['data'] = None
     _inventory_cache['last_update'] = None
-    
-    # 在后台线程中执行
     import threading
     thread = threading.Thread(target=_load_inventory_background)
     thread.daemon = True
     thread.start()
-    
     return jsonify({'status': 'started', 'total': len(products)})
 
 def _load_inventory_background():
-    """后台加载库存数据"""
     global _inventory_cache
-    
     try:
         products = get_cached_products()
         total = len(products)
         all_data = []
-        batch_size = 50  # 每批50件
-        
+        batch_size = 50
         product_info = {p['manageNumber']: p for p in products}
-        
         for i in range(0, total, batch_size):
             batch = products[i:i + batch_size]
             batch_numbers = [p['manageNumber'] for p in batch]
-            
-            # 并发获取这批库存
             with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
                 futures = [executor.submit(get_single_stock, mn) for mn in batch_numbers]
                 for future in concurrent.futures.as_completed(futures):
@@ -428,27 +800,19 @@ def _load_inventory_background():
                         })
                     except Exception as e:
                         print(f"获取库存失败: {e}")
-            
-            # 更新进度
             _inventory_cache['progress'] = min(i + batch_size, total)
             print(f"库存加载进度: {_inventory_cache['progress']}/{total}")
-            
-            # 每批之间休息1秒，避免限流
             time.sleep(1)
-        
         _inventory_cache['data'] = all_data
         _inventory_cache['last_update'] = datetime.now().isoformat()
         _inventory_cache['loading'] = False
-        
         print(f"库存加载完成！共 {len(all_data)} 件商品")
-        
     except Exception as e:
         print(f"后台加载库存失败: {e}")
         _inventory_cache['loading'] = False
 
 @app.route('/api/inventory/status', methods=['GET'])
 def get_inventory_status():
-    """获取库存加载状态"""
     global _inventory_cache
     return jsonify({
         'loading': _inventory_cache['loading'],
@@ -460,14 +824,11 @@ def get_inventory_status():
 
 @app.route('/api/inventory/result', methods=['GET'])
 def get_inventory_result():
-    """获取已加载的库存数据"""
     global _inventory_cache
     if _inventory_cache['loading']:
         return jsonify({'status': 'loading', 'progress': _inventory_cache['progress'], 'total': _inventory_cache['total']})
-    
     if _inventory_cache['data'] is None:
         return jsonify({'status': 'not_started'})
-    
     return jsonify({
         'status': 'done',
         'data': _inventory_cache['data'],
@@ -475,25 +836,18 @@ def get_inventory_result():
         'last_update': _inventory_cache['last_update']
     })
 
-# ========== 原有库存API（保留兼容，但增加超时保护） ==========
 @app.route('/api/inventory/all', methods=['GET'])
 def get_all_inventory():
-    """获取所有商品库存（直接方式，可能超时，建议使用异步方式）"""
     print("开始获取库存数据...")
     start_time = time.time()
-    
     products = get_cached_products()
-    
     print(f"共 {len(products)} 件商品，30线程并发获取库存...")
-    
     product_info = {p['manageNumber']: p for p in products}
     all_data = []
     done_count = 0
-    
     max_workers = min(30, len(products) or 1)
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(get_single_stock, p['manageNumber']) for p in products]
-        
         for future in concurrent.futures.as_completed(futures):
             try:
                 stock_data = future.result(timeout=30)
@@ -514,25 +868,19 @@ def get_all_inventory():
             except Exception as e:
                 print(f"获取库存失败: {e}")
                 done_count += 1
-    
     elapsed = time.time() - start_time
     print(f"完成！共 {len(all_data)} 件商品，耗时 {elapsed:.1f}秒")
-    
     return jsonify(all_data)
 
-# ========== 更新库存 ==========
 @app.route('/api/inventory/update', methods=['POST'])
 def update_inventory():
     data = request.json
     manage_number = data.get('manageNumber')
     stock = data.get('stock')
-    
     if not manage_number:
         return jsonify({'error': 'manageNumber required'}), 400
-    
     url = f"https://api.rms.rakuten.co.jp/es/2.1/inventories/manage-numbers/{manage_number}/variants/{manage_number}"
     body = {'quantity': stock, 'mode': 'set'}
-    
     try:
         response = session.put(url, json=body, timeout=30)
         if response.status_code == 200:
@@ -547,29 +895,23 @@ def update_inventory():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ========== 入库API ==========
 @app.route('/api/instock', methods=['POST'])
 def add_instock():
-    """手动添加入库记录"""
     try:
         data = request.json
         manage_number = data.get('manageNumber')
         quantity = data.get('quantity', 0)
         note = data.get('note', '')
-        
         if not manage_number or quantity <= 0:
             return jsonify({'success': False, 'error': '参数错误'}), 400
-        
         success, new_stock = update_inventory_direct(manage_number, quantity)
         if not success:
             return jsonify({'success': False, 'error': '更新库存失败'}), 500
-        
         product = None
         for p in get_cached_products():
             if p['manageNumber'] == manage_number:
                 product = p
                 break
-        
         records = load_stock_records()
         records['入库记录'].insert(0, {
             'id': int(time.time() * 1000),
@@ -581,25 +923,19 @@ def add_instock():
             'operator': 'system'
         })
         save_stock_records(records)
-        
         return jsonify({'success': True, 'message': f'入库{quantity}件成功', 'newStock': new_stock})
-        
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/sync-instock-from-products', methods=['POST'])
 def sync_instock_from_products():
-    """从商品API同步入库记录（新商品上架时自动入库）"""
     try:
         products = get_cached_products()
         records = load_stock_records()
-
         existing_manage_numbers = set()
         for r in records.get('入库记录', []):
             existing_manage_numbers.add(r.get('manageNumber', ''))
-
         is_first_run = len(records.get('入库记录', [])) == 0
-
         new_count = 0
         for p in products:
             manage_number = p.get('manageNumber')
@@ -614,7 +950,6 @@ def sync_instock_from_products():
                 else:
                     quantity = 1
                     note = '商品上架（自动入库）'
-
                 records['入库记录'].insert(0, {
                     'id': int(time.time() * 1000) + new_count,
                     'manageNumber': manage_number,
@@ -625,42 +960,32 @@ def sync_instock_from_products():
                     'operator': 'system'
                 })
                 new_count += 1
-
         if new_count > 0:
             save_stock_records(records)
-
         return jsonify({'success': True, 'new_instock_count': new_count, 'message': f'新增{new_count}条入库记录'})
-
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ========== 出库API ==========
 @app.route('/api/outstock', methods=['POST'])
 def add_outstock():
-    """手动添加出库记录"""
     try:
         data = request.json
         manage_number = data.get('manageNumber')
         quantity = data.get('quantity', 0)
         note = data.get('note', '')
-        
         if not manage_number or quantity <= 0:
             return jsonify({'success': False, 'error': '参数错误'}), 400
-        
         current_stock = get_current_stock(manage_number)
         if current_stock < quantity:
             return jsonify({'success': False, 'error': f'库存不足，当前库存: {current_stock}'}), 400
-        
         success, new_stock = update_inventory_direct(manage_number, -quantity)
         if not success:
             return jsonify({'success': False, 'error': '更新库存失败'}), 500
-        
         product = None
         for p in get_cached_products():
             if p['manageNumber'] == manage_number:
                 product = p
                 break
-        
         records = load_stock_records()
         records['出库记录'].insert(0, {
             'id': int(time.time() * 1000),
@@ -672,19 +997,15 @@ def add_outstock():
             'operator': 'system'
         })
         save_stock_records(records)
-        
         return jsonify({'success': True, 'message': f'出库{quantity}件成功', 'newStock': new_stock})
-        
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/sync-outstock-from-orders', methods=['POST'])
 def sync_outstock_from_orders():
-    """从订单API同步出库记录（仅记录，不扣减库存）"""
     try:
         end_date = datetime.now()
         start_date = end_date - timedelta(days=30)
-
         search_data = {
             "dateType": 1,
             "startDatetime": start_date.strftime("%Y-%m-%d") + "T00:00:00+0900",
@@ -695,28 +1016,21 @@ def sync_outstock_from_orders():
                 "SortModelList": []
             }
         }
-
         search_response = session.post(ORDER_SEARCH_URL, data=json.dumps(search_data), headers=ORDER_API_HEADERS, timeout=30)
-
         if search_response.status_code != 200:
             return jsonify({'success': False, 'error': f'订单搜索失败: {search_response.status_code}', 'detail': search_response.text}), 500
-
         search_result = search_response.json()
         order_numbers = search_result.get('orderNumberList', [])
-
         if not order_numbers:
             return jsonify({'success': True, 'new_outstock_count': 0, 'message': '没有订单数据'})
-
         records = load_stock_records()
         existing_order_ids = set()
         for r in records.get('出库记录', []):
             if r.get('orderNumber'):
                 existing_order_ids.add(r['orderNumber'])
-
         new_order_numbers = [n for n in order_numbers if n not in existing_order_ids]
         if not new_order_numbers:
             return jsonify({'success': True, 'new_outstock_count': 0, 'message': '没有新订单'})
-
         new_count = 0
         for i in range(0, len(new_order_numbers), 100):
             batch = new_order_numbers[i:i+100]
@@ -729,16 +1043,13 @@ def sync_outstock_from_orders():
             if detail_response.status_code != 200:
                 print(f"获取订单详情失败: {detail_response.status_code}")
                 continue
-
             detail_data = detail_response.json()
             orders = detail_data.get('OrderModelList', [])
-
             for order in orders:
                 order_number = order.get('orderNumber', '')
                 order_datetime = (order.get('orderDatetime') or '')[:19].replace('T', ' ')
                 if not order_number:
                     continue
-
                 packages = order.get('PackageModelList', order.get('packageModelList', []))
                 for pkg in packages:
                     items = pkg.get('ItemModelList', pkg.get('itemModelList', []))
@@ -746,10 +1057,8 @@ def sync_outstock_from_orders():
                         manage_number = item.get('manageNumber', '')
                         item_name = item.get('itemName', '')
                         quantity = item.get('units', item.get('quantity', 1))
-
                         if not manage_number:
                             continue
-
                         records['出库记录'].insert(0, {
                             'id': int(time.time() * 1000) + new_count,
                             'orderNumber': order_number,
@@ -761,28 +1070,21 @@ def sync_outstock_from_orders():
                             'operator': 'system'
                         })
                         new_count += 1
-
         if new_count > 0:
             save_stock_records(records)
-
         return jsonify({'success': True, 'new_outstock_count': new_count, 'message': f'新增{new_count}条出库记录'})
-
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ========== 获取库存记录API（支持分页） ==========
 @app.route('/api/stock-records', methods=['GET'])
 def get_stock_records_api():
-    """获取库存记录（支持分页和日期过滤）"""
     try:
         limit = int(request.args.get('limit', 100))
         offset = int(request.args.get('offset', 0))
         record_type = request.args.get('type', 'all')
         start_date = request.args.get('start_date', '')
         end_date = request.args.get('end_date', '')
-        
         records = load_stock_records()
-        
         all_records = []
         if record_type in ['all', 'out']:
             for r in records.get('出库记录', []):
@@ -792,17 +1094,13 @@ def get_stock_records_api():
             for r in records.get('入库记录', []):
                 r['_type'] = '入库'
                 all_records.append(r)
-        
         all_records.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
-        
         if start_date:
             all_records = [r for r in all_records if r.get('timestamp', '') >= start_date]
         if end_date:
             all_records = [r for r in all_records if r.get('timestamp', '') <= end_date + ' 23:59:59']
-        
         total = len(all_records)
         result = all_records[offset:offset + limit]
-        
         return jsonify({
             'success': True,
             'records': result,
@@ -813,7 +1111,6 @@ def get_stock_records_api():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ========== 受注API ==========
 @app.route('/api/orders/search', methods=['POST'])
 def search_orders():
     data = request.json
@@ -846,7 +1143,6 @@ def get_order():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ========== 强制刷新商品缓存 ==========
 @app.route('/api/products/refresh', methods=['POST'])
 def refresh_products():
     _products_cache['data'] = None
@@ -881,9 +1177,7 @@ def calculate_benefit():
         rakuten_region = data.get('rakutenRegion', '関東')
         size = data.get('size', '60')
         blackcat_region = data.get('blackcatRegion', '關東')
-        
         free_shipping_categories = ['食品・お菓子・天然生活', '健康食品', '美容・コスメ・ボディケア', '日用品雑貨', '医薬品', '水・ソフトドリンク']
-        
         if category in free_shipping_categories:
             rakuten_shipping = 0
             actual_shipping = 0
@@ -894,11 +1188,9 @@ def calculate_benefit():
             rakuten_shipping = RAKUTEN_SHIPPING_RATES.get(rakuten_region, 500)
             rate = BLACKCAT_RATES.get(size, {}).get(blackcat_region, 0)
             actual_shipping = int(rate * 1.1) if rate else 0
-        
         subtotal = sales_price + rakuten_shipping
         shipping_profit = rakuten_shipping - actual_shipping
         profit = subtotal - cost_price - actual_shipping
-        
         return jsonify({
             'success': True,
             'rakuten_shipping': rakuten_shipping,
@@ -955,7 +1247,6 @@ def daily_summary_api():
                 category_count['その他'] = category_count.get('その他', 0) + 1
                 category_total_price['その他'] = category_total_price.get('その他', 0) + price
         
-        # ===== 订单统计变量 =====
         total_orders = 0
         total_sales = 0
         total_item_sum = 0
@@ -1007,7 +1298,7 @@ def daily_summary_api():
                         
                         total_orders += 1
                         
-                        # ===== 🆕 获取商品金额（不含运费）：从商品明细中计算 =====
+                        # 获取商品金额（不含运费）：从商品明细中计算
                         item_total = 0
                         packages = order.get('PackageModelList', order.get('packageModelList', [])) or []
                         for pkg in packages:
@@ -1017,11 +1308,10 @@ def daily_summary_api():
                                 quantity = item.get('units', item.get('quantity', 1))
                                 item_total += price * quantity
                         
-                        # 备用：如果从明细计算为0，再使用 requestPrice
                         if item_total == 0:
                             item_total = order.get('requestPrice', 0)
                         
-                        # ===== 获取运费（使用 postagePrice） =====
+                        # 获取运费
                         shipping = order.get('postagePrice', 0)
                         if shipping == 0:
                             shipping = order.get('shippingPrice', 0)
@@ -1031,12 +1321,11 @@ def daily_summary_api():
                                 pkg_shipping = pkg.get('postagePrice', 0) or pkg.get('shippingPrice', 0) or pkg.get('carriage', 0)
                                 shipping += pkg_shipping
                         
-                        # ===== 累計 =====
                         total_item_sum += item_total
                         total_shipping_sum += shipping
                         total_sales += item_total + shipping
                         
-                        # ===== 获取客户信息 =====
+                        # 获取客户信息
                         orderer_info = order.get('OrdererModel', {}) or order.get('ordererModel', {})
                         family_name = orderer_info.get('familyName', '') or ''
                         first_name = orderer_info.get('firstName', '') or ''
@@ -1044,7 +1333,6 @@ def daily_summary_api():
                         if not customer_name:
                             customer_name = orderer_info.get('familyNameKana', '') or orderer_info.get('firstNameKana', '') or '---'
                         
-                        # 获取商品明细（用于前端显示）
                         packages = order.get('PackageModelList', order.get('packageModelList', [])) or []
                         item_list = []
                         for pkg in packages:
@@ -1162,11 +1450,9 @@ def daily_summary_api():
 
 @app.route('/api/debug/orders', methods=['GET'])
 def debug_orders():
-    """调试用：查看订单API原始返回结构"""
     try:
         today = datetime.now().strftime("%Y-%m-%d")
         week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-
         search_data = {
             "dateType": 1,
             "startDatetime": week_ago + "T00:00:00+0900",
@@ -1177,14 +1463,11 @@ def debug_orders():
                 "SortModelList": []
             }
         }
-
         search_response = session.post(ORDER_SEARCH_URL, data=json.dumps(search_data), headers=ORDER_API_HEADERS, timeout=30)
         search_result = search_response.json()
         order_numbers = search_result.get('orderNumberList', [])
-
         if not order_numbers:
             return jsonify({'search_result': search_result, 'detail_result': None, 'order_numbers': []})
-
         detail_response = session.post(
             ORDER_GET_URL,
             data=json.dumps({"orderNumberList": order_numbers[:3], "version": 10}),
@@ -1192,7 +1475,6 @@ def debug_orders():
             timeout=30
         )
         detail_result = detail_response.json()
-
         return jsonify({
             'order_numbers': order_numbers[:3],
             'search_status': search_response.status_code,
@@ -1203,17 +1485,10 @@ def debug_orders():
         import traceback
         return jsonify({'error': str(e), 'trace': traceback.format_exc()})
 
-# ========== 健康检查端点 ==========
-@app.route('/health')
-def health_check():
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
-        'data_file_exists': os.path.exists(STOCK_RECORDS_FILE),
-        'cache_age': int(time.time() - _products_cache['time']) if _products_cache['data'] else None
-    })
+# ============================================================
+# 第六部分：静态页面路由（整合）
+# ============================================================
 
-# ========== 静态页面路由 ==========
 @app.route('/')
 def index():
     return send_file('products.html')
@@ -1238,16 +1513,33 @@ def benefit_page():
 def daily_summary_page():
     return send_file('daily_summary.html')
 
-# ========== 启动 ==========
+@app.route('/gs-inventory')
+def gs_inventory_page():
+    """Google Sheets 在库管理页面"""
+    return send_file('gs_inventory.html')
+
+@app.route('/health')
+def health_check():
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'data_file_exists': os.path.exists(STOCK_RECORDS_FILE),
+        'cache_age': int(time.time() - _products_cache['time']) if _products_cache['data'] else None
+    })
+
+# ============================================================
+# 启动
+# ============================================================
 if __name__ == '__main__':
     print("=" * 60)
-    print("乐天店铺管理系统启动")
+    print("乐天店铺管理系统启动（整合版）")
     print(f"数据文件: {STOCK_RECORDS_FILE}")
     print("商品管理: http://127.0.0.1:5000/products")
     print("在庫管理: http://127.0.0.1:5000/inventory")
     print("贩卖信息: http://127.0.0.1:5000/orders")
     print("利益管理: http://127.0.0.1:5000/benefit")
     print("每日总结: http://127.0.0.1:5000/daily-summary")
+    print("Google Sheets在库管理: http://127.0.0.1:5000/gs-inventory")
     print("健康检查: http://127.0.0.1:5000/health")
     print("=" * 60)
     
