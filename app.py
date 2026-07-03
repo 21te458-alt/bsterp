@@ -910,7 +910,9 @@ def calculate_benefit():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-# ========== 每日数据总结API（修改版：排除取消订单） ==========
+# ============================================================
+# 每日数据总结API（修改版：商品金额和运费分开统计）
+# ============================================================
 @app.route('/api/daily-summary')
 def daily_summary_api():
     _t0 = time.time()
@@ -953,10 +955,13 @@ def daily_summary_api():
                 category_count['その他'] = category_count.get('その他', 0) + 1
                 category_total_price['その他'] = category_total_price.get('その他', 0) + price
         
+        # ===== 订单统计变量（新增运费相关） =====
         total_orders = 0
-        total_sales = 0
+        total_sales = 0           # 总销售额（商品金额 + 运费）
+        total_item_sum = 0        # 🆕 商品金额合计（不含运费）
+        total_shipping_sum = 0    # 🆕 运费合计
         order_details = []
-        cancelled_count = 0  # 🆕 统计取消订单数
+        cancelled_count = 0
         
         try:
             search_data = {
@@ -993,7 +998,7 @@ def daily_summary_api():
                     orders = detail_data.get('OrderModelList', [])
                     
                     for order in orders:
-                        # 🔧 检查订单状态，跳过已取消的订单 (600)
+                        # 检查订单状态，跳过已取消的订单 (600)
                         order_progress = order.get('orderProgress', 0)
                         order_number = order.get('orderNumber', '')
                         
@@ -1003,14 +1008,44 @@ def daily_summary_api():
                             continue
                         
                         total_orders += 1
-                        total_amount = order.get('requestPrice', 0) or order.get('totalPrice', 0) or 0
-                        total_sales += total_amount
                         
+                        # ===== 🆕 获取商品金额（不含运费） =====
+                        # requestPrice: 商品合计金额（税込、送料別）
+                        item_total = order.get('requestPrice', 0)
+                        if item_total == 0:
+                            item_total = order.get('totalPrice', 0)
+                        
+                        # ===== 🆕 获取运费 =====
+                        shipping = 0
+                        
+                        # 方法1：直接从顶层获取 shippingPrice
+                        shipping = order.get('shippingPrice', 0)
+                        
+                        # 方法2：从 ShippingModelList 获取
+                        if shipping == 0:
+                            shipping_list = order.get('ShippingModelList', [])
+                            if shipping_list and isinstance(shipping_list, list):
+                                shipping = shipping_list[0].get('shippingPrice', 0)
+                        
+                        # 方法3：从 PackageModelList 中的配送信息获取
+                        if shipping == 0:
+                            packages = order.get('PackageModelList', []) or order.get('packageModelList', [])
+                            for pkg in packages:
+                                pkg_shipping = pkg.get('shippingPrice', 0) or pkg.get('carriage', 0)
+                                shipping += pkg_shipping
+                        
+                        # ===== 🆕 累計 =====
+                        total_item_sum += item_total
+                        total_shipping_sum += shipping
+                        total_sales += item_total + shipping
+                        
+                        # 获取客户信息
                         orderer_info = order.get('ordererModel', order.get('OrdererModel', order.get('ordererInfo', {}))) or {}
                         last_name = orderer_info.get('ordererLastName', '') or ''
                         first_name = orderer_info.get('ordererFirstName', '') or ''
                         customer_name = (last_name + first_name).strip() or orderer_info.get('ordererLastNameKana', '') or '---'
                         
+                        # 获取商品明细
                         packages = order.get('PackageModelList', order.get('packageModelList', [])) or []
                         item_list = []
                         for pkg in packages:
@@ -1024,6 +1059,7 @@ def daily_summary_api():
                                     'manageNumber': manage_number
                                 })
                         
+                        # 判断订单分类
                         order_category = 'その他'
                         for it in item_list:
                             mn = it.get('manageNumber')
@@ -1031,24 +1067,31 @@ def daily_summary_api():
                                 order_category = manage_number_to_category[mn]
                                 break
                         
+                        # ===== 🆕 订单明细中添加 item_total 和 shipping =====
                         order_details.append({
                             'orderNumber': order_number,
                             'orderDate': (order.get('orderDatetime', '')[:10]) if order.get('orderDatetime') else '',
                             'customerName': customer_name,
-                            'totalAmount': total_amount,
+                            'item_total': item_total,      # 🆕 商品金额
+                            'shipping': shipping,          # 🆕 运费
+                            'totalAmount': item_total + shipping,
                             'status': order_progress,
                             'category': order_category,
                             'items': item_list
                         })
             
-            print(f"[每日总结] 有效订单数: {total_orders}, 取消订单数: {cancelled_count}, 销售额: ¥{total_sales}, 耗时: {time.time()-_t0:.1f}秒")
+            print(f"[每日总结] 有效订单数: {total_orders}, 取消订单数: {cancelled_count}, "
+                  f"商品金额合计: ¥{total_item_sum}, 运费合计: ¥{total_shipping_sum}, "
+                  f"总销售额: ¥{total_sales}, 耗时: {time.time()-_t0:.1f}秒")
                         
         except Exception as e:
             print(f"订单API调用异常: {e}")
         
-        estimated_profit = int(total_sales * 0.3)
-        profit_rate = (estimated_profit / total_sales * 100) if total_sales > 0 else 0
+        # 估算利润（基于商品金额，不含运费）
+        estimated_profit = int(total_item_sum * 0.3) if total_item_sum > 0 else 0
+        profit_rate = (estimated_profit / total_item_sum * 100) if total_item_sum > 0 else 0
         
+        # 获取库存数据
         stock_items = []
         total_stock_value = 0
         
@@ -1079,6 +1122,7 @@ def daily_summary_api():
         except Exception as e:
             print(f"库存统计异常: {e}")
         
+        # 分类统计
         category_list = []
         for cat in categories_list:
             cat_info = get_category_info(cat)
@@ -1091,6 +1135,7 @@ def daily_summary_api():
                 'color': cat_info['color']
             })
         
+        # ===== 🆕 返回数据中添加 item_total 和 shipping_total =====
         result = {
             'success': True,
             'summary': {
@@ -1098,10 +1143,12 @@ def daily_summary_api():
                 'total_products': len(products),
                 'total': {
                     'count': total_orders,
-                    'sales': total_sales,
+                    'sales': total_sales,              # 总销售额（商品+运费）
+                    'item_total': total_item_sum,      # 🆕 商品金额合计（不含运费）
+                    'shipping_total': total_shipping_sum,  # 🆕 运费合计
                     'profit': estimated_profit,
                     'profit_rate': profit_rate,
-                    'cancelled_count': cancelled_count  # 🆕 返回取消订单数
+                    'cancelled_count': cancelled_count
                 },
                 'categories': category_list,
                 'order_items': order_details,
