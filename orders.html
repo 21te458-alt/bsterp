@@ -55,7 +55,7 @@
         .status-paid{background:#fef3c7;color:#92400e}
         .status-pending{background:#ffe4e2;color:#b91c1c}
         .table-wrapper{background:white;border-radius:20px;overflow:hidden;border:1px solid #eef2f9}
-        table{width:100%;border-collapse:collapse;min-width:1200px}
+        table{width:100%;border-collapse:collapse;min-width:1100px}
         th{background:#fafcff;padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:#2c3e66;border-bottom:1px solid #e5eaef;cursor:pointer;white-space:nowrap}
         td{padding:10px 12px;border-bottom:1px solid #f0f3f8;font-size:12px}
         tr:hover{background:#fefaf5}
@@ -99,7 +99,6 @@
         .modal-item-qty{font-weight:700;color:#7c3aed;margin:0 4px}
         .modal-total-row{display:flex;justify-content:space-between;padding:14px 0;border-top:2px solid #e2e8f0;font-weight:700;font-size:16px;margin-top:4px}
         .modal-total-row .amt{font-size:18px}
-        .modal-payment{display:inline-flex;align-items:center;gap:4px;background:#eef2ff;padding:2px 10px;border-radius:12px;font-size:11px;color:#4338ca}
 
         @media (max-width:640px){body{padding:12px}.toolbar{flex-direction:column;align-items:stretch}.date-group{justify-content:space-between}.toolbar-actions{flex-direction:column;align-items:stretch}}
         @media (max-width:1024px){.stats-grid{grid-template-columns:repeat(3,1fr)}}
@@ -189,13 +188,12 @@
                         <th onclick="sortBy('itemTotal')">商品金额 <i class="fas fa-sort"></i></th>
                         <th onclick="sortBy('shipping')">运费 <i class="fas fa-sort"></i></th>
                         <th onclick="sortBy('totalAmount')">总金额 <i class="fas fa-sort"></i></th>
-                        <th>支払</th>
-                        <th>状態</th>
+                        <th>状态</th>
                         <th>明细</th>
                     </tr>
                 </thead>
                 <tbody id="orderTableBody">
-                    <tr><td colspan="11" class="loading-container"><i class="fas fa-cloud-upload-alt" style="font-size:28px;opacity:0.5;display:block;margin-bottom:12px"></i>「搜索订单」をクリックして受注データを読み込む<br>※ 期間指定 (最大63日)</td></tr>
+                    <tr><td colspan="10" class="loading-container"><i class="fas fa-cloud-upload-alt" style="font-size:28px;opacity:0.5;display:block;margin-bottom:12px"></i>「搜索订单」をクリックして受注データを読み込む<br>※ 期間指定 (最大63日)</td></tr>
                 </tbody>
             </table>
         </div>
@@ -279,18 +277,6 @@ function getOrderStatus(p){
     return m[p] || {cls: 'status-pending', text: '处理中'};
 }
 
-function getPaymentMethod(paymentType){
-    const m = {
-        1: {icon: '💳', text: '信用卡'},
-        2: {icon: '🏦', text: '银行汇款'},
-        3: {icon: '📱', text: '乐天Pay'},
-        4: {icon: '💰', text: '代金引換'},
-        5: {icon: '🏪', text: '便利店支付'},
-        9: {icon: '🔄', text: '其他'}
-    };
-    return m[paymentType] || {icon: '💳', text: '信用卡'};
-}
-
 function setDefaultDates(){
     const t = new Date().toISOString().split('T')[0];
     if (!document.getElementById('startDate').value) document.getElementById('startDate').value = t;
@@ -308,7 +294,7 @@ async function searchOrders(){
     if (getDaysDiff(sd, ed) > 63) { alert('検索期間は最大63日以内です'); return; }
 
     const tbody = document.getElementById('orderTableBody');
-    tbody.innerHTML = '<tr><td colspan="11" class="loading-container"><div class="spinner"></div>正在搜索订单，请稍候...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="loading-container"><div class="spinner"></div>正在搜索订单，请稍候...</td></tr>';
 
     try {
         const searchRes = await fetch('/api/orders/search', {
@@ -328,14 +314,14 @@ async function searchOrders(){
         const searchData = await searchRes.json();
 
         if (searchData.error) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;color:#ef4444;">❌ ' + searchData.error + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:#ef4444;">❌ ' + searchData.error + '</td></tr>';
             return;
         }
 
         const msgList = searchData.messageModelList || [];
         for (let msg of msgList) {
             if (msg.messageType === 'ERROR') {
-                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;color:#ef4444;">❌ ' + msg.message + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:#ef4444;">❌ ' + msg.message + '</td></tr>';
                 return;
             }
         }
@@ -348,7 +334,7 @@ async function searchOrders(){
         }
 
         if (orderNumbers.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;">该时间段内暂无订单</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;">该时间段内暂无订单</td></tr>';
             allOrders = [];
             allOrdersRaw = [];
             updateStats();
@@ -363,7 +349,7 @@ async function searchOrders(){
         const detailData = await detailRes.json();
 
         if (detailData.error) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;color:#ef4444;">❌ ' + detailData.error + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:#ef4444;">❌ ' + detailData.error + '</td></tr>';
             return;
         }
 
@@ -379,7 +365,6 @@ async function searchOrders(){
             const firstName = ordererInfo.firstName || '';
             const customerName = (familyName + firstName).trim() || ordererInfo.familyNameKana || '---';
             
-            // 获取配送地址
             const shippingInfo = order.ShippingModel || order.shippingModel || ordererInfo;
             const address = [
                 shippingInfo.zipCode || '',
@@ -391,8 +376,6 @@ async function searchOrders(){
             const orderDate = (order.orderDatetime || order.orderDate || '').slice(0, 10);
             const orderTime = (order.orderDatetime || order.orderDate || '').slice(11, 16) || '';
             const progress = order.orderProgress || 0;
-            const paymentType = order.paymentType || 9;
-            const paymentInfo = getPaymentMethod(paymentType);
 
             const packages = order.PackageModelList || order.packageModelList || [];
             let orderItems = [];
@@ -455,9 +438,6 @@ async function searchOrders(){
                 shipping: shipping,
                 totalAmount: totalAmount,
                 progress: progress,
-                paymentType: paymentType,
-                paymentIcon: paymentInfo.icon,
-                paymentText: paymentInfo.text,
                 category: category,
                 items: orderItems,
                 ordererInfo: ordererInfo,
@@ -471,7 +451,7 @@ async function searchOrders(){
         document.getElementById('lastUpdate').innerText = '最后更新: ' + new Date().toLocaleString();
 
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;color:#ef4444;">❌ 请求失败: ' + e.message + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:#ef4444;">❌ 请求失败: ' + e.message + '</td></tr>';
     }
 }
 
@@ -544,7 +524,7 @@ function displayOrders(orders){
     const pageOrders = orders.slice(start, start + itemsPerPage);
 
     if (!pageOrders.length) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;">无匹配订单</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;">无匹配订单</td></tr>';
         return;
     }
 
@@ -565,7 +545,6 @@ function displayOrders(orders){
             '<td class="shipping-amt">¥' + (o.shipping || 0).toLocaleString() + 
             ' <span class="filter-tag ' + (hasShipping ? 'has-shipping' : 'no-shipping') + '">' + shippingLabel + '</span></td>' +
             '<td class="amt">¥' + (o.totalAmount || 0).toLocaleString() + '</td>' +
-            '<td><span style="font-size:11px;">' + o.paymentIcon + ' ' + o.paymentText + '</span></td>' +
             '<td><span class="status-badge ' + s.cls + '">' + s.text + '</span></td>' +
             '<td><button class="btn-detail" onclick="showOrderDetail(\'' + escapeHtml(o.orderNumber) + '\')"><i class="fas fa-eye"></i> 详情</button></td>' +
             '</tr>';
@@ -609,7 +588,7 @@ function changePage(p){
     renderOrders();
 }
 
-// ===== 显示订单明细（增强版） =====
+// ===== 显示订单明细 =====
 function showOrderDetail(orderNumber){
     const order = allOrders.find(o => o.orderNumber === orderNumber);
     if (!order) { alert('订单数据不存在'); return; }
@@ -624,11 +603,9 @@ function showOrderDetail(orderNumber){
         '<span style="display:inline-flex;gap:16px;flex-wrap:wrap;">' +
         '<span><i class="far fa-calendar"></i> ' + escapeHtml(order.orderDate) + ' ' + escapeHtml(order.orderTime) + '</span>' +
         '<span><span class="status-badge ' + s.cls + '">' + s.text + '</span></span>' +
-        '<span>' + order.paymentIcon + ' ' + order.paymentText + '</span>' +
         '<span>' + getCategoryIcon(cat) + ' ' + cat + '</span>' +
         '</span>';
 
-    // 客户信息
     document.getElementById('modalCustomerInfo').innerHTML = `
         <div><span class="label">氏名</span><div class="value">${escapeHtml(info.familyName || '')} ${escapeHtml(info.firstName || '')}</div></div>
         <div><span class="label">氏名（カナ）</span><div class="value">${escapeHtml(info.familyNameKana || '')} ${escapeHtml(info.firstNameKana || '')}</div></div>
@@ -636,7 +613,6 @@ function showOrderDetail(orderNumber){
         <div><span class="label">メール</span><div class="value" style="font-size:12px;">${escapeHtml(info.mailAddress || '-')}</div></div>
     `;
 
-    // 配送信息
     const shipAddr = [ship.zipCode || '', ship.prefecture || '', ship.city || '', ship.addressLine || ''].filter(Boolean).join(' ');
     document.getElementById('modalShippingInfo').innerHTML = `
         <div><span class="label">配送先</span><div class="value">${escapeHtml(shipAddr || '-')}</div></div>
@@ -645,7 +621,6 @@ function showOrderDetail(orderNumber){
         <div><span class="label">配送希望時間</span><div class="value">${escapeHtml(ship.deliveryTime || '-')}</div></div>
     `;
 
-    // 商品明细
     let itemsHtml = '';
     if (order.items && order.items.length > 0) {
         let itemIdx = 1;
@@ -699,7 +674,7 @@ function exportCSV(){
         filtered = filtered.filter(o => (o.shipping || 0) === 0);
     }
 
-    const rows = [['订单号', '日期', '客户名', '配送先', '商品数', '商品金额', '运费', '总金额', '支付方式', '状态', '分类']];
+    const rows = [['订单号', '日期', '客户名', '配送先', '商品数', '商品金额', '运费', '总金额', '状态', '分类']];
     for (let o of filtered) {
         rows.push([
             o.orderNumber,
@@ -710,7 +685,6 @@ function exportCSV(){
             o.itemTotal || 0,
             o.shipping || 0,
             o.totalAmount || 0,
-            o.paymentText,
             getOrderStatus(o.progress).text,
             o.category || 'その他'
         ]);
