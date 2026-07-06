@@ -51,6 +51,83 @@
         .btn-primary{background:#bf0000;color:white}
         .btn-primary:hover{background:#8b0000}
 
+        /* 🆕 筛选统计栏 */
+        .filter-stats{
+            background:#f8fafc;
+            border-radius:10px;
+            padding:10px 16px;
+            margin:0 18px 12px 18px;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            flex-wrap:wrap;
+            gap:8px 16px;
+            border:1px solid #eef2ff;
+        }
+        .filter-stats .stat-group{
+            display:flex;
+            align-items:center;
+            gap:16px;
+            flex-wrap:wrap;
+        }
+        .filter-stats .stat-item{
+            display:flex;
+            align-items:center;
+            gap:4px;
+            font-size:13px;
+            color:#475569;
+        }
+        .filter-stats .stat-item .num{
+            font-weight:700;
+            color:#1e293b;
+            font-size:15px;
+        }
+        .filter-stats .stat-item .num.highlight{
+            color:#bf0000;
+        }
+        .filter-stats .stat-divider{
+            width:1px;
+            height:24px;
+            background:#e2e8f0;
+        }
+        .filter-stats .clear-btn{
+            color:#94a3b8;
+            font-size:12px;
+            cursor:pointer;
+            padding:2px 8px;
+            border-radius:6px;
+            border:1px solid transparent;
+            transition:all 0.2s;
+            background:transparent;
+        }
+        .filter-stats .clear-btn:hover{
+            border-color:#e2e8f0;
+            background:white;
+            color:#475569;
+        }
+        @media(max-width:768px){
+            .filter-stats{
+                flex-direction:column;
+                align-items:stretch;
+                gap:6px;
+                padding:8px 12px;
+                margin:0 12px 8px 12px;
+            }
+            .filter-stats .stat-group{
+                gap:8px;
+                justify-content:space-between;
+            }
+            .filter-stats .stat-item{
+                font-size:11px;
+            }
+            .filter-stats .stat-item .num{
+                font-size:13px;
+            }
+            .filter-stats .stat-divider{
+                display:none;
+            }
+        }
+
         /* Table */
         .table-area{overflow:auto;resize:vertical;min-height:200px;max-height:80vh;height:420px}
         table{width:100%;border-collapse:collapse;min-width:600px}
@@ -123,78 +200,79 @@
         .footer{text-align:center;padding:12px;color:#94a3b8;font-size:11px}
         .resize-hint{text-align:right;font-size:10px;color:#cbd5e1;padding:4px 10px;border-top:1px solid #f1f5f9;cursor:ns-resize;user-select:none}
         .resize-hint i{margin-right:4px}
+
         /* ============================================================
-   📱 移动端适配
-   ============================================================ */
+           📱 移动端适配
+           ============================================================ */
 
-/* 平板设备 */
-@media (max-width: 1024px) {
-    .main-layout { grid-template-columns: 1fr; gap: 12px; }
-    .outstock-panel { order: 2; }
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-}
+        /* 平板设备 */
+        @media (max-width: 1024px) {
+            .main-layout { grid-template-columns: 1fr; gap: 12px; }
+            .outstock-panel { order: 2; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
 
-/* 手机设备 */
-@media (max-width: 768px) {
-    body { padding: 8px; }
-    .container { gap: 10px; }
-    
-    .header { padding: 12px 14px; border-radius: 12px; }
-    .header h1 { font-size: 1.1rem; }
-    .header p { font-size: 0.7rem; }
-    .nav-links { gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15); }
-    .nav-links a { font-size: 0.65rem; padding: 3px 8px; background: rgba(255,255,255,0.08); border-radius: 12px; white-space: nowrap; }
-    .nav-links a.active { background: rgba(255,255,255,0.2); }
-    
-    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
-    .stat-card { padding: 10px 12px; border-radius: 10px; }
-    .stat-title { font-size: 9px; }
-    .stat-value { font-size: 18px; }
-    
-    .loading-bar-container { padding: 10px 14px; gap: 8px; border-radius: 10px; }
-    .loading-bar-label { font-size: 11px; }
-    .loading-bar-text { font-size: 11px; }
-    .loading-bar-track { min-width: 60px; height: 6px; }
-    .btn-outline { font-size: 10px; padding: 3px 8px; }
-    
-    .panel { border-radius: 12px; }
-    .panel-header { padding: 10px 12px; flex-direction: column; align-items: stretch; gap: 8px; }
-    .panel-title { font-size: 13px; }
-    
-    .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .filters .search-box { grid-column: 1 / -1; padding: 0 8px; }
-    .filters .search-box input { width: 100%; font-size: 12px; padding: 6px 4px; }
-    .filter-select { padding: 6px 8px; font-size: 10px; border-radius: 8px; width: 100%; }
-    .btn { padding: 6px 10px; font-size: 10px; border-radius: 8px; justify-content: center; grid-column: 1 / -1; }
-    
-    .table-area { height: auto; max-height: 50vh; min-height: 250px; }
-    table { font-size: 10px; min-width: 380px; }
-    th, td { padding: 4px 5px; }
-    th { font-size: 8px; }
-    td { font-size: 9px; }
-    td:first-child { font-size: 8px; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    td:nth-child(2) { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .category-badge { font-size: 7px; padding: 1px 4px; }
-    .stock-badge { font-size: 7px; padding: 1px 4px; }
-    .action-btn { font-size: 8px; padding: 2px 6px; border-radius: 4px; }
-    
-    .pagination { padding: 6px 8px; gap: 3px; }
-    .page-btn { padding: 3px 6px; font-size: 10px; border-radius: 5px; }
-    
-    .outstock-panel { border-radius: 12px; }
-    .outstock-header { padding: 10px 12px; }
-    .outstock-title { font-size: 13px; }
-    .tab { font-size: 9px; padding: 4px 2px; }
-    .outstock-summary { padding: 8px 12px; }
-    .summary-value { font-size: 14px; }
-    .outstock-body { height: 200px; }
-    .record-item, .prod-item, .day-item { padding: 8px 12px; }
-    .record-name, .prod-name, .day-date { font-size: 11px; }
-    .record-qty, .prod-count, .day-qty { font-size: 12px; }
-    
-    .resize-hint { font-size: 8px; padding: 2px 8px; }
-    .footer { font-size: 10px; padding: 10px; }
-}
+        /* 手机设备 */
+        @media (max-width: 768px) {
+            body { padding: 8px; }
+            .container { gap: 10px; }
+            
+            .header { padding: 12px 14px; border-radius: 12px; }
+            .header h1 { font-size: 1.1rem; }
+            .header p { font-size: 0.7rem; }
+            .nav-links { gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15); }
+            .nav-links a { font-size: 0.65rem; padding: 3px 8px; background: rgba(255,255,255,0.08); border-radius: 12px; white-space: nowrap; }
+            .nav-links a.active { background: rgba(255,255,255,0.2); }
+            
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+            .stat-card { padding: 10px 12px; border-radius: 10px; }
+            .stat-title { font-size: 9px; }
+            .stat-value { font-size: 18px; }
+            
+            .loading-bar-container { padding: 10px 14px; gap: 8px; border-radius: 10px; }
+            .loading-bar-label { font-size: 11px; }
+            .loading-bar-text { font-size: 11px; }
+            .loading-bar-track { min-width: 60px; height: 6px; }
+            .btn-outline { font-size: 10px; padding: 3px 8px; }
+            
+            .panel { border-radius: 12px; }
+            .panel-header { padding: 10px 12px; flex-direction: column; align-items: stretch; gap: 8px; }
+            .panel-title { font-size: 13px; }
+            
+            .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+            .filters .search-box { grid-column: 1 / -1; padding: 0 8px; }
+            .filters .search-box input { width: 100%; font-size: 12px; padding: 6px 4px; }
+            .filter-select { padding: 6px 8px; font-size: 10px; border-radius: 8px; width: 100%; }
+            .btn { padding: 6px 10px; font-size: 10px; border-radius: 8px; justify-content: center; grid-column: 1 / -1; }
+            
+            .table-area { height: auto; max-height: 50vh; min-height: 250px; }
+            table { font-size: 10px; min-width: 380px; }
+            th, td { padding: 4px 5px; }
+            th { font-size: 8px; }
+            td { font-size: 9px; }
+            td:first-child { font-size: 8px; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            td:nth-child(2) { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .category-badge { font-size: 7px; padding: 1px 4px; }
+            .stock-badge { font-size: 7px; padding: 1px 4px; }
+            .action-btn { font-size: 8px; padding: 2px 6px; border-radius: 4px; }
+            
+            .pagination { padding: 6px 8px; gap: 3px; }
+            .page-btn { padding: 3px 6px; font-size: 10px; border-radius: 5px; }
+            
+            .outstock-panel { border-radius: 12px; }
+            .outstock-header { padding: 10px 12px; }
+            .outstock-title { font-size: 13px; }
+            .tab { font-size: 9px; padding: 4px 2px; }
+            .outstock-summary { padding: 8px 12px; }
+            .summary-value { font-size: 14px; }
+            .outstock-body { height: 200px; }
+            .record-item, .prod-item, .day-item { padding: 8px 12px; }
+            .record-name, .prod-name, .day-date { font-size: 11px; }
+            .record-qty, .prod-count, .day-qty { font-size: 12px; }
+            
+            .resize-hint { font-size: 8px; padding: 2px 8px; }
+            .footer { font-size: 10px; padding: 10px; }
+        }
     </style>
 </head>
 <body>
@@ -267,6 +345,32 @@
                     <button class="btn btn-primary" onclick="loadInventory()"><i class="fas fa-sync-alt"></i> 更新</button>
                 </div>
             </div>
+
+            <!-- 🆕 筛选统计栏 -->
+            <div class="filter-stats" id="filterStats">
+                <div class="stat-group">
+                    <div class="stat-item">
+                        <i class="fas fa-filter" style="color:#94a3b8;font-size:12px;"></i>
+                        表示中: <span class="num highlight" id="filteredCount">0</span> 件
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item">
+                        <i class="fas fa-cubes" style="color:#94a3b8;font-size:12px;"></i>
+                        在庫合計: <span class="num" id="filteredStock">0</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item">
+                        <i class="fas fa-yen-sign" style="color:#94a3b8;font-size:12px;"></i>
+                        金額合計: <span class="num" id="filteredValue">¥0</span>
+                    </div>
+                </div>
+                <div>
+                    <button class="clear-btn" onclick="clearFilters()">
+                        <i class="fas fa-times-circle"></i> フィルター解除
+                    </button>
+                </div>
+            </div>
+
             <div class="table-area" id="tableArea">
                 <table id="inventoryTable">
                     <thead><tr>
@@ -596,6 +700,28 @@
         document.getElementById('lowStockCount').innerText = lowStock;
     }
 
+    // ===== 🆕 更新筛选统计 =====
+    function updateFilterStats() {
+        let totalStock = 0, totalValue = 0;
+        for (let p of filteredProducts) {
+            let s = inventoryData[p.manageNumber]?.stock;
+            if (s === undefined || s === null) s = 0;
+            totalStock += s;
+            totalValue += (p.price || 0) * s;
+        }
+        document.getElementById('filteredCount').innerText = filteredProducts.length.toLocaleString();
+        document.getElementById('filteredStock').innerText = totalStock.toLocaleString();
+        document.getElementById('filteredValue').innerText = '¥' + totalValue.toLocaleString();
+    }
+
+    // ===== 🆕 清除筛选 =====
+    function clearFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('categoryFilter').value = 'all';
+        document.getElementById('sortSelect').value = 'name';
+        applyFilters();
+    }
+
     // ===== Filters =====
     function applyFilters() {
         let f = [...allProducts];
@@ -628,6 +754,7 @@
         filteredProducts = f;
         currentPage = 1;
         renderTable();
+        updateFilterStats(); // 🆕 更新筛选统计
     }
 
     // ===== Render table =====
