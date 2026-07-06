@@ -26,7 +26,7 @@ CORS(app)
 app.config['JSON_AS_ASCII'] = False
 
 # ============================================================
-# 第一部分：乐天RMS API 配置（原有）
+# 第一部分：乐天RMS API 配置
 # ============================================================
 
 SERVICE_SECRET = os.environ.get('SERVICE_SECRET', 'SP406647_AaHdEvRVKrO74RDh')
@@ -65,7 +65,7 @@ ANIME_GENRES = [
 ]
 
 # ============================================================
-# 第二部分：Google Sheets 配置（新增）
+# 第二部分：Google Sheets 配置
 # ============================================================
 
 # Google Sheets API 认证
@@ -103,7 +103,7 @@ STOCK_WORKSHEET_NAME = '动漫记录'
 GENERAL_STOCK_NAME = '在庫'
 
 # ============================================================
-# 第三部分：Google Sheets 函数（新增）
+# 第三部分：Google Sheets 函数
 # ============================================================
 
 class SimpleCache:
@@ -224,7 +224,7 @@ def get_order_worksheet():
     return sh.worksheet('销售记录')
 
 # ============================================================
-# 第四部分：Google Sheets API 路由（支持双表）
+# 第四部分：Google Sheets API 路由
 # ============================================================
 
 @app.route('/api/sheets-info')
@@ -505,7 +505,7 @@ def export_gs_to_excel(file_key):
         return jsonify({'success': False, 'error': str(e)})
 
 # ============================================================
-# 第五部分：乐天RMS API 路由（原有，保持不变）
+# 第五部分：乐天RMS API 路由
 # ============================================================
 
 # ========== カテゴリ分類関数 ==========
@@ -1221,7 +1221,7 @@ def calculate_benefit():
         return jsonify({'success': False, 'error': str(e)})
 
 # ============================================================
-# 每日数据总结API（修改版：商品金额和运费分开统计）
+# 每日数据总结API（修复版：使用 requestPrice 作为总金额）
 # ============================================================
 @app.route('/api/daily-summary')
 def daily_summary_api():
@@ -1311,25 +1311,11 @@ def daily_summary_api():
                         
                         if order_progress == 600:
                             cancelled_count += 1
-                            print(f"⏭️ 跳过取消订单: {order_number}")
                             continue
                         
                         total_orders += 1
                         
-                        # 获取商品金额（不含运费）：从商品明细中计算
-                        item_total = 0
-                        packages = order.get('PackageModelList', order.get('packageModelList', [])) or []
-                        for pkg in packages:
-                            items = pkg.get('ItemModelList', pkg.get('itemModelList', [])) or []
-                            for item in items:
-                                price = item.get('price', 0)
-                                quantity = item.get('units', item.get('quantity', 1))
-                                item_total += price * quantity
-                        
-                        if item_total == 0:
-                            item_total = order.get('requestPrice', 0)
-                        
-                        # 获取运费
+                        # 使用 requestPrice 作为总金额（含税）
                         shipping = order.get('postagePrice', 0)
                         if shipping == 0:
                             shipping = order.get('shippingPrice', 0)
@@ -1339,11 +1325,28 @@ def daily_summary_api():
                                 pkg_shipping = pkg.get('postagePrice', 0) or pkg.get('shippingPrice', 0) or pkg.get('carriage', 0)
                                 shipping += pkg_shipping
                         
+                        request_price = order.get('requestPrice', 0) or order.get('totalPrice', 0)
+                        
+                        if request_price > 0:
+                            total_amount = request_price
+                            item_total = request_price - shipping
+                            if item_total < 0:
+                                item_total = request_price
+                        else:
+                            item_total = 0
+                            packages = order.get('PackageModelList', order.get('packageModelList', [])) or []
+                            for pkg in packages:
+                                items = pkg.get('ItemModelList', pkg.get('itemModelList', [])) or []
+                                for item in items:
+                                    price = item.get('price', 0)
+                                    quantity = item.get('units', item.get('quantity', 1))
+                                    item_total += price * quantity
+                            total_amount = item_total + shipping
+                        
                         total_item_sum += item_total
                         total_shipping_sum += shipping
-                        total_sales += item_total + shipping
+                        total_sales += total_amount
                         
-                        # 获取客户信息
                         orderer_info = order.get('OrdererModel', {}) or order.get('ordererModel', {})
                         family_name = orderer_info.get('familyName', '') or ''
                         first_name = orderer_info.get('firstName', '') or ''
@@ -1377,7 +1380,7 @@ def daily_summary_api():
                             'customerName': customer_name,
                             'item_total': item_total,
                             'shipping': shipping,
-                            'totalAmount': item_total + shipping,
+                            'totalAmount': total_amount,
                             'status': order_progress,
                             'category': order_category,
                             'items': item_list
@@ -1504,7 +1507,7 @@ def debug_orders():
         return jsonify({'error': str(e), 'trace': traceback.format_exc()})
 
 # ============================================================
-# 第六部分：静态页面路由（整合）
+# 第六部分：静态页面路由
 # ============================================================
 
 @app.route('/')
@@ -1536,15 +1539,6 @@ def gs_inventory_page():
     """Google Sheets 在库管理页面"""
     return send_file('gs_inventory.html')
 
-@app.route('/health')
-def health_check():
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
-        'data_file_exists': os.path.exists(STOCK_RECORDS_FILE),
-        'cache_age': int(time.time() - _products_cache['time']) if _products_cache['data'] else None
-    })
-
 # ============================================================
 # 启动
 # ============================================================
@@ -1558,7 +1552,6 @@ if __name__ == '__main__':
     print("利益管理: http://127.0.0.1:5000/benefit")
     print("每日总结: http://127.0.0.1:5000/daily-summary")
     print("Google Sheets在库管理: http://127.0.0.1:5000/gs-inventory")
-    print("健康检查: http://127.0.0.1:5000/health")
     print("=" * 60)
     
     port = int(os.environ.get('PORT', 5000))
