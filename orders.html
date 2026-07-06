@@ -343,26 +343,13 @@ async function searchOrders(){
             const orderDate = (order.orderDatetime || order.orderDate || '').slice(0, 10);
             const progress = order.orderProgress || 0;
 
-            // ===== 🆕 计算商品金额（从商品明细中计算） =====
-            let itemTotal = 0;
             const packages = order.PackageModelList || order.packageModelList || [];
             let orderItems = [];
             for (const pkg of packages) {
                 const items = pkg.ItemModelList || pkg.itemModelList || [];
                 for (const item of items) {
-                    const price = item.price || 0;
-                    const quantity = item.units || item.quantity || 1;
-                    itemTotal += price * quantity;
                     orderItems.push(item);
                 }
-            }
-
-            // 备用：如果明细计算为0，使用 requestPrice - postagePrice
-            if (itemTotal === 0) {
-                const requestPrice = order.requestPrice || order.totalPrice || 0;
-                const shipping = order.postagePrice || order.shippingPrice || 0;
-                itemTotal = requestPrice - shipping;
-                if (itemTotal < 0) itemTotal = requestPrice;
             }
 
             // ===== 🆕 获取运费 =====
@@ -374,7 +361,27 @@ async function searchOrders(){
                 }
             }
 
-            const totalAmount = itemTotal + shipping;
+            // ===== 🆕 总金额与商品金额：以乐天 requestPrice（实付总额）为准 =====
+            // requestPrice / totalPrice 已由乐天正确计算了税金・调整金额・优惠券・积分等，
+            // 是客户实际支付的权威金额；不能再用 item.price × quantity 手动累加替代，
+            // 因为部分商品的 price 字段是税抜（不含税），部分是税込（含税），
+            // 手动累加会导致含税订单的金额算少（差额通常正好是商品金额的 10% 消费税）。
+            const requestPrice = order.requestPrice || order.totalPrice || 0;
+            let totalAmount, itemTotal;
+            if (requestPrice > 0) {
+                totalAmount = requestPrice;
+                itemTotal = requestPrice - shipping;
+                if (itemTotal < 0) itemTotal = requestPrice; // 防御性处理，异常数据时退化
+            } else {
+                // 备用：requestPrice 缺失时才手动累加（可能不含税，仅作兜底）
+                itemTotal = 0;
+                for (const item of orderItems) {
+                    const price = item.price || 0;
+                    const quantity = item.units || item.quantity || 1;
+                    itemTotal += price * quantity;
+                }
+                totalAmount = itemTotal + shipping;
+            }
 
             // ===== 判断分类 =====
             let category = 'その他';
