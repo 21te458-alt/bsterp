@@ -85,6 +85,7 @@
         table.orders-table tbody tr:hover{background:#fef2f2}
         .order-num{font-family:monospace;font-size:12px}
         .amt{font-weight:700;color:#bf0000}
+        .qty-amt{font-weight:700;color:#7c3aed}
         .status-badge{display:inline-block;padding:4px 12px;border-radius:30px;font-size:11px;font-weight:600;white-space:nowrap}
         .status-completed{background:#d1fae5;color:#065f46}
         .status-shipped{background:#dbeafe;color:#1e40af}
@@ -169,6 +170,7 @@
             .category-badge { font-size: 7px; padding: 1px 4px; }
             .status-badge { font-size: 7px; padding: 1px 6px; }
             .amt { font-size: 10px; }
+            .qty-amt { font-size: 10px; }
             .detail-btn { font-size: 8px; padding: 3px 6px; border-radius: 6px; }
             .pagination { padding: 6px; gap: 2px; }
             .pagination button { padding: 3px 6px; font-size: 9px; border-radius: 5px; }
@@ -269,12 +271,23 @@
         const stockSummary=summary.stock_summary||{total_value:0,top_items:[]};
         const totalProducts=summary.total_products||0;
         
-        // ===== KPI卡片（5个：订单数、商品金额、运费、总销售额、利润） =====
+        // ===== 🆕 计算商品总数量（从订单明细中累加） =====
+        const orderItems = summary.order_items || [];
+        let totalQty = 0;
+        for (let o of orderItems) {
+            if (o.items && o.items.length > 0) {
+                for (let item of o.items) {
+                    totalQty += (item.quantity || 1);
+                }
+            }
+        }
+        
+        // ===== KPI卡片（5个：商品总数、商品金额、运费、总销售额、利润） =====
         let kpiHtml=`<div class="kpi-grid">
             <div class="kpi-card">
-                <div class="kpi-header"><div class="kpi-icon"><i class="fas fa-shopping-cart"></i></div></div>
-                <div class="kpi-value">${total.count}</div>
-                <div class="kpi-label">受注件数</div>
+                <div class="kpi-header"><div class="kpi-icon" style="background:#ede9fe;color:#7c3aed;"><i class="fas fa-boxes"></i></div></div>
+                <div class="kpi-value">${totalQty.toLocaleString()}</div>
+                <div class="kpi-label">📦 商品总数量</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-header"><div class="kpi-icon" style="background:#dbeafe;color:#2563eb;"><i class="fas fa-tag"></i></div></div>
@@ -327,8 +340,8 @@
         // 在庫サマリー
         let inventorySummary=`<div class="info-card"><h3><i class="fas fa-chart-simple"></i> 在庫サマリー</h3><div><div style="display:flex;justify-content:space-between;padding:12px 0"><span style="color:#64748b">総商品数</span><span class="stock-price">${totalProducts}点</span></div><div style="display:flex;justify-content:space-between;padding:12px 0;border-top:1px solid #e2e8f0"><span style="color:#64748b">在庫総額</span><span class="stock-price">¥${(stockSummary.total_value||0).toLocaleString()}</span></div></div></div>`;
         
-        // ===== 订单明细区块（新增商品金额和运费列） =====
-        let ordersSectionHtml='<div class="section-title"><i class="fas fa-receipt"></i> 受注明細（当日注文詳細）</div><div class="orders-card">'+
+        // ===== 订单明细区块（新增商品数量列） =====
+        let ordersSectionHtml='<div class="section-title"><i class="fas fa-receipt"></i> 受注明細</div><div class="orders-card">'+
             '<div class="orders-toolbar">'+
             '<input type="text" id="orderSearchInput" placeholder="订单号 / 客户名で検索..." oninput="onOrderSearch()">'+
             '<span class="orders-count" id="ordersCountLabel"></span>'+
@@ -338,6 +351,7 @@
             '<th onclick="sortOrders(\'orderNumber\')">订单号 <i class="fas fa-sort"></i></th>'+
             '<th onclick="sortOrders(\'orderDate\')">日期 <i class="fas fa-sort"></i></th>'+
             '<th onclick="sortOrders(\'customerName\')">客户 <i class="fas fa-sort"></i></th>'+
+            '<th onclick="sortOrders(\'totalQty\')">商品数 <i class="fas fa-sort"></i></th>'+
             '<th>分类</th>'+
             '<th onclick="sortOrders(\'item_total\')">商品金额 <i class="fas fa-sort"></i></th>'+
             '<th onclick="sortOrders(\'shipping\')">运费 <i class="fas fa-sort"></i></th>'+
@@ -349,6 +363,18 @@
         document.getElementById('summaryContent').innerHTML=kpiHtml+categoryHtml+`<div class="two-columns">${inventorySummary}${stockHtml}</div>`+ordersSectionHtml;
         
         allOrders=summary.order_items||[];
+        // 为每个订单计算总数量（如果后端没有返回totalQty）
+        for (let o of allOrders) {
+            if (!o.totalQty && o.items && o.items.length > 0) {
+                let qty = 0;
+                for (let item of o.items) {
+                    qty += (item.quantity || 1);
+                }
+                o.totalQty = qty;
+            } else if (!o.totalQty) {
+                o.totalQty = 0;
+            }
+        }
         orderSearch='';orderPage=1;orderSort={column:'orderDate',order:'desc'};
         document.getElementById('orderSearchInput')&&(document.getElementById('orderSearchInput').value='');
         renderOrdersTable();
@@ -370,7 +396,10 @@
         if(orderSearch){list=list.filter(o=>(o.orderNumber||'').toLowerCase().includes(orderSearch)||(o.customerName||'').toLowerCase().includes(orderSearch))}
         list.sort((a,b)=>{
             let va=a[orderSort.column],vb=b[orderSort.column];
-            if(orderSort.column==='totalAmount'||orderSort.column==='item_total'||orderSort.column==='shipping'){va=parseFloat(va)||0;vb=parseFloat(vb)||0}
+            if(orderSort.column==='totalAmount'||orderSort.column==='item_total'||orderSort.column==='shipping'||orderSort.column==='totalQty'){
+                va=parseFloat(va)||0;
+                vb=parseFloat(vb)||0;
+            }
             if(va<vb)return orderSort.order==='asc'?-1:1;
             if(va>vb)return orderSort.order==='asc'?1:-1;
             return 0;
@@ -383,7 +412,7 @@
         if(!tbody)return;
         const filtered=getFilteredSortedOrders();
         document.getElementById('ordersCountLabel').innerText=`${filtered.length} 件`;
-        if(!filtered.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8">该期间内暂无订单数据</td></tr>';document.getElementById('ordersPagination').innerHTML='';return}
+        if(!filtered.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:40px;color:#94a3b8">该期间内暂无订单数据</td></tr>';document.getElementById('ordersPagination').innerHTML='';return}
         const start=(orderPage-1)*ORDERS_PER_PAGE;
         const pageOrders=filtered.slice(start,start+ORDERS_PER_PAGE);
         let html='';
@@ -391,10 +420,12 @@
             const idxInAll=allOrders.indexOf(o);
             const s=getOrderStatus(o.status);
             const cat=o.category||'その他';
+            const totalQty = o.totalQty || 0;
             html+=`<tr>
                 <td class="order-num">${escapeHtml(o.orderNumber)}</td>
                 <td>${escapeHtml(o.orderDate)}</td>
                 <td>${escapeHtml(o.customerName||'---')}</td>
+                <td class="qty-amt">${totalQty}件</td>
                 <td><span class="category-badge ${getCategoryClass(cat)}">${getCategoryIcon(cat)} ${cat}</span></td>
                 <td class="amt">¥${(o.item_total||0).toLocaleString()}</td>
                 <td class="amt">¥${(o.shipping||0).toLocaleString()}</td>
@@ -426,11 +457,13 @@
         const o=allOrders[idx];
         if(!o)return;
         const s=getOrderStatus(o.status);
+        const totalQty = o.totalQty || 0;
         document.getElementById('modalOrderNumber').innerText='订单号: '+o.orderNumber;
         document.getElementById('modalMeta').innerHTML=`
             <span><i class="fas fa-calendar"></i> ${escapeHtml(o.orderDate)}</span>
             <span><i class="fas fa-user"></i> ${escapeHtml(o.customerName||'---')}</span>
             <span class="status-badge ${s.cls}">${s.text}</span>
+            <span class="qty-amt"><i class="fas fa-box"></i> ${totalQty}件</span>
             <span class="amt">商品: ¥${(o.item_total||0).toLocaleString()}</span>
             <span class="amt">运费: ¥${(o.shipping||0).toLocaleString()}</span>
             <span class="amt">合计: ¥${(o.totalAmount||0).toLocaleString()}</span>`;
@@ -438,7 +471,8 @@
         let itemsHtml='';
         if(items.length){
             for(let it of items){
-                itemsHtml+=`<div class="modal-item"><div class="modal-item-name">${escapeHtml(it.name)}</div><div class="modal-item-meta">¥${(it.price||0).toLocaleString()} × ${it.quantity||1}</div></div>`;
+                const qty = it.quantity || 1;
+                itemsHtml+=`<div class="modal-item"><div class="modal-item-name">${escapeHtml(it.name)}</div><div class="modal-item-meta">¥${(it.price||0).toLocaleString()} × <strong>${qty}</strong> = ¥${((it.price||0) * qty).toLocaleString()}</div></div>`;
             }
         }else{
             itemsHtml='<div style="text-align:center;padding:20px;color:#94a3b8">商品明細データがありません</div>';
@@ -451,12 +485,13 @@
     function exportOrdersCSV(){
         const filtered=getFilteredSortedOrders();
         if(!filtered.length){alert('无数据可导出');return}
-        const rows=[['订单号','日期','客户','分类','商品金额','运费','总金额','状态']];
+        const rows=[['订单号','日期','客户','商品数','分类','商品金额','运费','总金额','状态']];
         for(let o of filtered){
             rows.push([
                 o.orderNumber,
                 o.orderDate,
                 o.customerName||'',
+                o.totalQty || 0,
                 o.category||'',
                 o.item_total||0,
                 o.shipping||0,
