@@ -18,7 +18,6 @@
         .nav-links a { color: white; text-decoration: none; font-size: 0.85rem; font-weight: 500; opacity: 0.75; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; }
         .nav-links a:hover, .nav-links a.active { opacity: 1; }
         
-        /* ===== 标签页切换 ===== */
         .tabs { display: flex; gap: 4px; background: white; padding: 6px 6px 0 6px; border-radius: 16px 16px 0 0; border-bottom: 2px solid #e9edf2; margin-top: 20px; }
         .tab-btn { padding: 12px 28px; border: none; border-radius: 12px 12px 0 0; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.3s; background: transparent; color: #666; display: flex; align-items: center; gap: 8px; }
         .tab-btn:hover { background: #f0f4ff; color: #1a73e8; }
@@ -280,6 +279,10 @@
                 <div class="form-group"><label>仕入れ価格（個/税抜）</label><input type="text" id="editPrice" placeholder="进货价格" value="0"></div>
             </div>
             <div class="form-row">
+                <div class="form-group"><label>仕入先</label><input type="text" id="editSupplier" placeholder="仕入先"></div>
+                <div class="form-group"><label>员工群价格税込</label><input type="text" id="editEmployeePrice" placeholder="员工群价格" value="0"></div>
+            </div>
+            <div class="form-row">
                 <div class="form-group"><label>入庫数量</label><input type="number" id="editQty" placeholder="入库数量" value="0"></div>
                 <div class="form-group"><label>残り在庫</label><input type="number" id="editStock" placeholder="当前库存" value="0"></div>
             </div>
@@ -287,7 +290,14 @@
                 <div class="form-group"><label>単位</label><input type="text" id="editUnit" placeholder="個/BOX等"></div>
                 <div class="form-group"><label>位置</label><input type="text" id="editLocation" placeholder="仓库位置"></div>
             </div>
-            <div class="form-group"><label>備考欄</label><input type="text" id="editNote" placeholder="备注"></div>
+            <div class="form-row">
+                <div class="form-group"><label>编号</label><input type="text" id="editCode" placeholder="编号"></div>
+                <div class="form-group"><label>入库日</label><input type="text" id="editDate" placeholder="入库日"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>售出</label><input type="number" id="editSold" placeholder="售出数量" value="0"></div>
+                <div class="form-group"><label>備考欄</label><input type="text" id="editNote" placeholder="备注"></div>
+            </div>
             <div class="modal-buttons">
                 <button class="btn btn-outline" onclick="closeModal()">取消</button>
                 <button class="btn btn-primary" onclick="saveProduct()"><i class="fas fa-save"></i> 保存</button>
@@ -302,6 +312,24 @@
             INSTOCK: '在庫',
             PREORDER: '预售'
         };
+        
+        // 新列名（按顺序）
+        const COLUMN_NAMES = [
+            '仕入先',
+            '员工群价格税込',
+            'メーカー',
+            '仕入れ価格（個/税抜）',
+            'JAN CODE',
+            '商品名',
+            '単位',
+            '位置',
+            '编号',
+            '入库日',
+            '入庫数量',
+            '残り在庫',
+            '備考欄',
+            '售出'
+        ];
         
         let currentSheet = SHEET_NAMES.INSTOCK;
         let stockData = [];
@@ -351,19 +379,30 @@
                 '<span class="sheet-tag preorder">🎯 预售</span>';
         }
         
+        function getColIndex(colName) {
+            return currentHeaders.indexOf(colName);
+        }
+        
+        function getCellValue(row, colName) {
+            const idx = getColIndex(colName);
+            if (idx === -1) return '';
+            return row[idx] || '';
+        }
+        
+        function getCellNumber(row, colName) {
+            const val = getCellValue(row, colName);
+            return parseFloat(String(val).replace(/[¥,]/g, '')) || 0;
+        }
+        
         // ========== 标签页切换 ==========
         function switchTab(sheet) {
             currentSheet = sheet;
             
-            // 更新标签页样式
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.sheet === sheet);
             });
             
-            // 更新当前表标签
             document.getElementById('currentSheetLabel').innerText = getSheetDisplayName(sheet);
-            
-            // 重新加载数据
             refreshData();
         }
         
@@ -382,7 +421,6 @@
                     document.getElementById('totalQuantity').innerHTML = (data.total_quantity || 0).toLocaleString();
                     document.getElementById('stockRate').innerHTML = (data.stock_rate || 0).toFixed(1) + '%';
                     
-                    // 更新标签页上的数量徽章
                     if (sheetName === SHEET_NAMES.INSTOCK) {
                         sheetCounts[SHEET_NAMES.INSTOCK] = data.total_items || 0;
                         document.getElementById('badgeInstock').innerText = sheetCounts[SHEET_NAMES.INSTOCK];
@@ -403,7 +441,6 @@
             document.getElementById('lastUpdate').innerText = '更新中...';
             
             try {
-                // 请求指定工作表的数据
                 const response = await fetch(`/api/gs-sheet/${FILE_KEY}?sheet_name=${encodeURIComponent(currentSheet)}`);
                 const data = await response.json();
                 
@@ -425,9 +462,9 @@
         
         // ========== 计算面板统计 ==========
         function calculatePanelStats(data) {
-            const priceIdx = currentHeaders.indexOf('仕入れ価格（個/税抜）');
-            const stockIdx = currentHeaders.indexOf('残り在庫');
-            const makerIdx = currentHeaders.indexOf('メーカー');
+            const priceIdx = getColIndex('仕入れ価格（個/税抜）');
+            const stockIdx = getColIndex('残り在庫');
+            const makerIdx = getColIndex('メーカー');
             
             let totalStockValue = 0;
             let brandMap = new Map();
@@ -484,7 +521,7 @@
                 }
             });
             
-            // 渲染品牌统计
+            // 品牌统计
             let brandHtml = '';
             const sortedBrands = Array.from(brandMap.entries()).sort((a,b) => b[1].value - a[1].value);
             if (sortedBrands.length === 0) {
@@ -501,7 +538,7 @@
             }
             document.getElementById('brandStats').innerHTML = brandHtml;
             
-            // 渲染价格区间
+            // 价格区间
             let priceHtml = '';
             let totalProducts = 0;
             priceRangeMap.forEach(v => totalProducts += v);
@@ -519,7 +556,7 @@
             }
             document.getElementById('priceRangeStats').innerHTML = priceHtml;
             
-            // 渲染库存状态
+            // 库存状态
             const totalWithStock = normalStockCount + lowStockCount + outStockCount;
             const stockRate = totalWithStock > 0 ? (normalStockCount / totalWithStock * 100) : 0;
             document.getElementById('stockStatusStats').innerHTML = `
@@ -541,37 +578,50 @@
                 return;
             }
             
-            // 定义显示列
-            const displayCols = ['JAN CODE', '商品名', 'メーカー', '仕入れ価格（個/税抜）', '入庫数量', '残り在庫', '在库金额', '単位', '位置'];
+            // 显示列（新表结构）
+            const displayCols = [
+                'JAN CODE', '商品名', 'メーカー', '仕入れ価格（個/税抜）',
+                '入庫数量', '残り在庫', '仕入先', '员工群价格税込',
+                '単位', '位置', '编号', '入库日', '售出', '備考欄'
+            ];
+            
             const colIndices = {};
             displayCols.forEach(col => {
                 const idx = headers.indexOf(col);
                 if (idx !== -1) colIndices[col] = idx;
             });
             
-            const hasAmountCol = headers.includes('在库金额');
-            const sheetDisplay = getSheetDisplayName(currentSheet);
+            // 计算在库金额
+            const hasAmount = headers.includes('在库金额');
             
             let html = '<table><thead><tr><th style="width:40px;">#</th><th style="width:60px;">操作</th><th>区分</th>';
             displayCols.forEach(col => {
-                if (col === '在库金额' && !hasAmountCol) return;
+                if (col === '在库金额' && !hasAmount) return;
                 html += `<th>${col}</th>`;
             });
+            // 添加在库金额列（计算字段）
+            if (!hasAmount) {
+                html += `<th>在库金额</th>`;
+            }
             html += '</tr></thead><tbody>';
             
             data.forEach((row, idx) => {
-                const jan = row[colIndices['JAN CODE']] || '';
-                const name = row[colIndices['商品名']] || '';
-                const maker = row[colIndices['メーカー']] || '';
-                let price = row[colIndices['仕入れ価格（個/税抜）']] || '0';
-                const inQty = parseInt(row[colIndices['入庫数量']]) || 0;
-                let stockQty = parseInt(row[colIndices['残り在庫']]) || 0;
-                const unit = row[colIndices['単位']] || '';
-                const location = row[colIndices['位置']] || '';
+                const jan = getCellValue(row, 'JAN CODE');
+                const name = getCellValue(row, '商品名');
+                const maker = getCellValue(row, 'メーカー');
+                const price = getCellNumber(row, '仕入れ価格（個/税抜）');
+                const inQty = getCellNumber(row, '入庫数量');
+                let stockQty = getCellNumber(row, '残り在庫');
+                const unit = getCellValue(row, '単位');
+                const location = getCellValue(row, '位置');
+                const supplier = getCellValue(row, '仕入先');
+                const empPrice = getCellNumber(row, '员工群价格税込');
+                const code = getCellValue(row, '编号');
+                const date = getCellValue(row, '入库日');
+                const sold = getCellNumber(row, '售出');
+                const note = getCellValue(row, '備考欄');
                 
-                price = String(price).replace(/[¥,]/g, '');
-                const priceNum = parseFloat(price) || 0;
-                const stockValue = priceNum * stockQty;
+                const stockValue = price * stockQty;
                 const stockClass = getStockClass(stockQty);
                 
                 html += `<tr>
@@ -584,29 +634,31 @@
                     <td class="editable" ondblclick="editCell(${idx}, 'JAN CODE')">${escapeHtml(jan) || '-'}</td>
                     <td class="editable" ondblclick="editCell(${idx}, '商品名')">${escapeHtml(name) || '-'}</td>
                     <td class="editable" ondblclick="editCell(${idx}, 'メーカー')">${escapeHtml(maker) || '-'}</td>
-                    <td class="editable" ondblclick="editCell(${idx}, '仕入れ価格（個/税抜）')">¥${priceNum.toLocaleString()}</td>
+                    <td class="editable" ondblclick="editCell(${idx}, '仕入れ価格（個/税抜）')">¥${price.toLocaleString()}</td>
                     <td class="editable" ondblclick="editCell(${idx}, '入庫数量')">${inQty}</td>
-                    <td class="${stockClass} editable" ondblclick="editCell(${idx}, '残り在庫')">${stockQty} ${getStockLabel(stockQty)}</td>`;
-                
-                if (hasAmountCol) {
-                    html += `<td class="profit-positive">¥${stockValue.toLocaleString()}</td>`;
-                }
-                
-                html += `<td class="editable" ondblclick="editCell(${idx}, '単位')">${escapeHtml(unit) || '-'}</td>
+                    <td class="${stockClass} editable" ondblclick="editCell(${idx}, '残り在庫')">${stockQty} ${getStockLabel(stockQty)}</td>
+                    <td class="editable" ondblclick="editCell(${idx}, '仕入先')">${escapeHtml(supplier) || '-'}</td>
+                    <td class="editable" ondblclick="editCell(${idx}, '员工群价格税込')">¥${empPrice.toLocaleString()}</td>
+                    <td class="editable" ondblclick="editCell(${idx}, '単位')">${escapeHtml(unit) || '-'}</td>
                     <td class="editable" ondblclick="editCell(${idx}, '位置')">${escapeHtml(location) || '-'}</td>
+                    <td class="editable" ondblclick="editCell(${idx}, '编号')">${escapeHtml(code) || '-'}</td>
+                    <td class="editable" ondblclick="editCell(${idx}, '入库日')">${escapeHtml(date) || '-'}</td>
+                    <td class="editable" ondblclick="editCell(${idx}, '售出')">${sold}</td>
+                    <td class="editable" ondblclick="editCell(${idx}, '備考欄')">${escapeHtml(note) || '-'}</td>
+                    <td class="profit-positive">¥${stockValue.toLocaleString()}</td>
                 </tr>`;
             });
             
             html += '</tbody></table>';
             html += `<div style="padding:12px 16px; text-align:center; color:#94a3b8; font-size:11px; border-top:1px solid #f0f3f8;">
-                💡 双击单元格可编辑 | 共 ${data.length} 件商品 | 当前表: ${sheetDisplay} | 在庫金額 = 仕入れ価格 × 残り在庫
+                💡 双击单元格可编辑 | 共 ${data.length} 件商品 | 当前表: ${getSheetDisplayName(currentSheet)} | 在庫金額 = 仕入れ価格 × 残り在庫
             </div>`;
             container.innerHTML = html;
         }
         
         // ========== 更新品牌筛选 ==========
         function updateBrandFilter(data) {
-            const makerIdx = currentHeaders.indexOf('メーカー');
+            const makerIdx = getColIndex('メーカー');
             if (makerIdx === -1) return;
             const brands = new Set();
             data.forEach(row => { if (row[makerIdx]) brands.add(row[makerIdx]); });
@@ -626,10 +678,10 @@
             const brand = document.getElementById('filterBrand').value;
             const stockStatus = document.getElementById('filterStock').value;
             
-            const nameIdx = currentHeaders.indexOf('商品名');
-            const janIdx = currentHeaders.indexOf('JAN CODE');
-            const makerIdx = currentHeaders.indexOf('メーカー');
-            const stockIdx = currentHeaders.indexOf('残り在庫');
+            const nameIdx = getColIndex('商品名');
+            const janIdx = getColIndex('JAN CODE');
+            const makerIdx = getColIndex('メーカー');
+            const stockIdx = getColIndex('残り在庫');
             
             if (keyword) {
                 data = data.filter(row => {
@@ -670,7 +722,7 @@
         
         // ========== 编辑单元格 ==========
         async function editCell(rowIdx, colName) {
-            const colIdx = currentHeaders.indexOf(colName);
+            const colIdx = getColIndex(colName);
             if (colIdx === -1) return;
             const currentValue = stockData[rowIdx][colIdx] || '';
             const newValue = prompt(`编辑 ${colName}:`, currentValue);
@@ -694,32 +746,26 @@
             }
         }
         
-        // ========== 编辑商品（模态框） ==========
+        // ========== 编辑商品 ==========
         function editProduct(idx) {
             isEditMode = true;
             editingRow = idx;
             document.getElementById('modalTitle').innerText = '编辑商品 - ' + getSheetDisplayName(currentSheet);
             
-            const janIdx = currentHeaders.indexOf('JAN CODE');
-            const nameIdx = currentHeaders.indexOf('商品名');
-            const makerIdx = currentHeaders.indexOf('メーカー');
-            const priceIdx = currentHeaders.indexOf('仕入れ価格（個/税抜）');
-            const qtyIdx = currentHeaders.indexOf('入庫数量');
-            const stockIdx = currentHeaders.indexOf('残り在庫');
-            const unitIdx = currentHeaders.indexOf('単位');
-            const locationIdx = currentHeaders.indexOf('位置');
-            const noteIdx = currentHeaders.indexOf('備考欄');
-            
-            document.getElementById('editJan').value = stockData[idx][janIdx] || '';
-            document.getElementById('editName').value = stockData[idx][nameIdx] || '';
-            document.getElementById('editMaker').value = stockData[idx][makerIdx] || '';
-            let price = stockData[idx][priceIdx] || '0';
-            document.getElementById('editPrice').value = String(price).replace(/[¥,]/g, '');
-            document.getElementById('editQty').value = stockData[idx][qtyIdx] || '0';
-            document.getElementById('editStock').value = stockData[idx][stockIdx] || '0';
-            document.getElementById('editUnit').value = stockData[idx][unitIdx] || '';
-            document.getElementById('editLocation').value = stockData[idx][locationIdx] || '';
-            document.getElementById('editNote').value = stockData[idx][noteIdx] || '';
+            document.getElementById('editJan').value = getCellValue(stockData[idx], 'JAN CODE');
+            document.getElementById('editName').value = getCellValue(stockData[idx], '商品名');
+            document.getElementById('editMaker').value = getCellValue(stockData[idx], 'メーカー');
+            document.getElementById('editPrice').value = getCellNumber(stockData[idx], '仕入れ価格（個/税抜）');
+            document.getElementById('editSupplier').value = getCellValue(stockData[idx], '仕入先');
+            document.getElementById('editEmployeePrice').value = getCellNumber(stockData[idx], '员工群价格税込');
+            document.getElementById('editQty').value = getCellNumber(stockData[idx], '入庫数量');
+            document.getElementById('editStock').value = getCellNumber(stockData[idx], '残り在庫');
+            document.getElementById('editUnit').value = getCellValue(stockData[idx], '単位');
+            document.getElementById('editLocation').value = getCellValue(stockData[idx], '位置');
+            document.getElementById('editCode').value = getCellValue(stockData[idx], '编号');
+            document.getElementById('editDate').value = getCellValue(stockData[idx], '入库日');
+            document.getElementById('editSold').value = getCellNumber(stockData[idx], '售出');
+            document.getElementById('editNote').value = getCellValue(stockData[idx], '備考欄');
             
             document.getElementById('editModal').style.display = 'flex';
         }
@@ -733,10 +779,15 @@
             document.getElementById('editName').value = '';
             document.getElementById('editMaker').value = '';
             document.getElementById('editPrice').value = '0';
+            document.getElementById('editSupplier').value = '';
+            document.getElementById('editEmployeePrice').value = '0';
             document.getElementById('editQty').value = '0';
             document.getElementById('editStock').value = '0';
             document.getElementById('editUnit').value = '';
             document.getElementById('editLocation').value = '';
+            document.getElementById('editCode').value = '';
+            document.getElementById('editDate').value = '';
+            document.getElementById('editSold').value = '0';
             document.getElementById('editNote').value = '';
             document.getElementById('editModal').style.display = 'flex';
         }
@@ -750,37 +801,52 @@
             const jan = document.getElementById('editJan').value.trim();
             if (!jan) { showToast('请输入JAN码', 'error'); return; }
             
+            // 所有字段列表
+            const fields = [
+                '仕入先',
+                '员工群价格税込',
+                'メーカー',
+                '仕入れ価格（個/税抜）',
+                'JAN CODE',
+                '商品名',
+                '単位',
+                '位置',
+                '编号',
+                '入库日',
+                '入庫数量',
+                '残り在庫',
+                '備考欄',
+                '售出'
+            ];
+            
+            const values = [
+                document.getElementById('editSupplier').value,
+                document.getElementById('editEmployeePrice').value,
+                document.getElementById('editMaker').value,
+                document.getElementById('editPrice').value,
+                document.getElementById('editJan').value,
+                document.getElementById('editName').value,
+                document.getElementById('editUnit').value,
+                document.getElementById('editLocation').value,
+                document.getElementById('editCode').value,
+                document.getElementById('editDate').value,
+                document.getElementById('editQty').value,
+                document.getElementById('editStock').value,
+                document.getElementById('editNote').value,
+                document.getElementById('editSold').value
+            ];
+            
             if (isEditMode && editingRow !== null) {
-                const janIdx = currentHeaders.indexOf('JAN CODE');
-                const nameIdx = currentHeaders.indexOf('商品名');
-                const makerIdx = currentHeaders.indexOf('メーカー');
-                const priceIdx = currentHeaders.indexOf('仕入れ価格（個/税抜）');
-                const qtyIdx = currentHeaders.indexOf('入庫数量');
-                const stockIdx = currentHeaders.indexOf('残り在庫');
-                const unitIdx = currentHeaders.indexOf('単位');
-                const locationIdx = currentHeaders.indexOf('位置');
-                const noteIdx = currentHeaders.indexOf('備考欄');
-                
-                const updates = [
-                    { col: janIdx, value: document.getElementById('editJan').value },
-                    { col: nameIdx, value: document.getElementById('editName').value },
-                    { col: makerIdx, value: document.getElementById('editMaker').value },
-                    { col: priceIdx, value: document.getElementById('editPrice').value },
-                    { col: qtyIdx, value: document.getElementById('editQty').value },
-                    { col: stockIdx, value: document.getElementById('editStock').value },
-                    { col: unitIdx, value: document.getElementById('editUnit').value },
-                    { col: locationIdx, value: document.getElementById('editLocation').value },
-                    { col: noteIdx, value: document.getElementById('editNote').value }
-                ];
-                
+                // 编辑模式：逐列更新
                 let allSuccess = true;
-                for (const update of updates) {
-                    if (update.col !== -1) {
+                for (let i = 0; i < fields.length; i++) {
+                    const colIdx = getColIndex(fields[i]);
+                    if (colIdx !== -1) {
                         try {
                             await fetch(`/api/gs-sheet/${FILE_KEY}/cell?sheet_name=${encodeURIComponent(currentSheet)}`, {
                                 method: 'PUT',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ row: editingRow + 2, col: update.col + 1, value: update.value })
+                                body: JSON.stringify({ row: editingRow + 2, col: colIdx + 1, value: values[i] })
                             });
                         } catch(e) {
                             allSuccess = false;
@@ -797,27 +863,14 @@
                 return;
             }
             
-            // 新增模式
-            const newRow = [''] * currentHeaders.length;
-            const janIdx = currentHeaders.indexOf('JAN CODE');
-            const nameIdx = currentHeaders.indexOf('商品名');
-            const makerIdx = currentHeaders.indexOf('メーカー');
-            const priceIdx = currentHeaders.indexOf('仕入れ価格（個/税抜）');
-            const qtyIdx = currentHeaders.indexOf('入庫数量');
-            const stockIdx = currentHeaders.indexOf('残り在庫');
-            const unitIdx = currentHeaders.indexOf('単位');
-            const locationIdx = currentHeaders.indexOf('位置');
-            const noteIdx = currentHeaders.indexOf('備考欄');
-            
-            newRow[janIdx] = jan;
-            if (nameIdx !== -1) newRow[nameIdx] = document.getElementById('editName').value;
-            if (makerIdx !== -1) newRow[makerIdx] = document.getElementById('editMaker').value;
-            if (priceIdx !== -1) newRow[priceIdx] = document.getElementById('editPrice').value;
-            if (qtyIdx !== -1) newRow[qtyIdx] = document.getElementById('editQty').value;
-            if (stockIdx !== -1) newRow[stockIdx] = document.getElementById('editStock').value;
-            if (unitIdx !== -1) newRow[unitIdx] = document.getElementById('editUnit').value;
-            if (locationIdx !== -1) newRow[locationIdx] = document.getElementById('editLocation').value;
-            if (noteIdx !== -1) newRow[noteIdx] = document.getElementById('editNote').value;
+            // 新增模式：构建完整行数据
+            const newRow = new Array(currentHeaders.length).fill('');
+            for (let i = 0; i < fields.length; i++) {
+                const colIdx = getColIndex(fields[i]);
+                if (colIdx !== -1) {
+                    newRow[colIdx] = values[i];
+                }
+            }
             
             try {
                 const response = await fetch(`/api/gs-sheet/${FILE_KEY}/row?sheet_name=${encodeURIComponent(currentSheet)}`, {
@@ -864,13 +917,9 @@
         }
         
         // ========== 初始化 ==========
-        // 先加载在庫数据，并获取两个表的数量
         async function init() {
-            // 先获取在庫的数量
             await loadStockStats(SHEET_NAMES.INSTOCK);
-            // 再获取预售的数量（更新徽章）
             await loadStockStats(SHEET_NAMES.PREORDER);
-            // 最后加载在庫的完整数据
             refreshData();
         }
         
