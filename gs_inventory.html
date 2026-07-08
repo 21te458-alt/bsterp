@@ -351,6 +351,17 @@
             '预售': ['商品名', 'JAN', 'メーカー', '顧客名']
         };
         
+        // 内部显示标识 -> Google Sheets 里真实的工作表名称
+        // （后端 get_worksheet_by_name 是按这个真实名字去查表的，
+        //  如果传中文显示名会找不到，导致静默回退到"在庫"表）
+        const REAL_SHEET_NAME = {
+            [SHEET_NAMES.INSTOCK]: '在庫',
+            [SHEET_NAMES.PREORDER]: '楽天-予約商品登録リスト'
+        };
+        function getRealSheetName(sheet) {
+            return REAL_SHEET_NAME[sheet] || sheet;
+        }
+        
         let currentSheet = SHEET_NAMES.INSTOCK;
         let stockData = [];
         let currentHeaders = [];
@@ -465,7 +476,7 @@
         // ========== 加载统计数据 ==========
         async function loadStockStats(sheetName) {
             try {
-                const response = await fetch(`/api/gs-stock-stats?sheet_name=${encodeURIComponent(sheetName)}`);
+                const response = await fetch(`/api/gs-stock-stats?sheet_name=${encodeURIComponent(getRealSheetName(sheetName))}`);
                 const data = await response.json();
                 if (data.success) {
                     document.getElementById('totalCount').innerText = data.total_items || 0;
@@ -497,7 +508,7 @@
             document.getElementById('lastUpdate').innerText = '更新中...';
             
             try {
-                const response = await fetch(`/api/gs-sheet/${FILE_KEY}?sheet_name=${encodeURIComponent(currentSheet)}`);
+                const response = await fetch(`/api/gs-sheet/${FILE_KEY}?sheet_name=${encodeURIComponent(getRealSheetName(currentSheet))}`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -779,7 +790,7 @@
             if (newValue === null) return;
             
             try {
-                const response = await fetch(`/api/gs-sheet/${FILE_KEY}/cell?sheet_name=${encodeURIComponent(currentSheet)}`, {
+                const response = await fetch(`/api/gs-sheet/${FILE_KEY}/cell?sheet_name=${encodeURIComponent(getRealSheetName(currentSheet))}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ row: rowIdx + 2, col: colIdx + 1, value: newValue })
@@ -867,7 +878,7 @@
                     const colIdx = getColIndex(columns[i]);
                     if (colIdx !== -1) {
                         try {
-                            await fetch(`/api/gs-sheet/${FILE_KEY}/cell?sheet_name=${encodeURIComponent(currentSheet)}`, {
+                            await fetch(`/api/gs-sheet/${FILE_KEY}/cell?sheet_name=${encodeURIComponent(getRealSheetName(currentSheet))}`, {
                                 method: 'PUT',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ row: editingRow + 2, col: colIdx + 1, value: values[i] })
@@ -897,7 +908,7 @@
             }
             
             try {
-                const response = await fetch(`/api/gs-sheet/${FILE_KEY}/row?sheet_name=${encodeURIComponent(currentSheet)}`, {
+                const response = await fetch(`/api/gs-sheet/${FILE_KEY}/row?sheet_name=${encodeURIComponent(getRealSheetName(currentSheet))}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ row_data: newRow })
@@ -919,7 +930,7 @@
         async function deleteProduct(idx) {
             if (!confirm(`确定要删除第 ${idx + 1} 行数据吗？`)) return;
             try {
-                const response = await fetch(`/api/gs-sheet/${FILE_KEY}/row/${idx}?sheet_name=${encodeURIComponent(currentSheet)}`, {
+                const response = await fetch(`/api/gs-sheet/${FILE_KEY}/row/${idx}?sheet_name=${encodeURIComponent(getRealSheetName(currentSheet))}`, {
                     method: 'DELETE'
                 });
                 const result = await response.json();
@@ -936,7 +947,7 @@
         
         // ========== 导出Excel ==========
         function exportData() {
-            window.location.href = `/api/gs-sheet/${FILE_KEY}/export?sheet_name=${encodeURIComponent(currentSheet)}`;
+            window.location.href = `/api/gs-sheet/${FILE_KEY}/export?sheet_name=${encodeURIComponent(getRealSheetName(currentSheet))}`;
             showToast('📎 导出中...', 'success');
         }
         
