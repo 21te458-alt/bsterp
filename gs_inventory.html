@@ -67,6 +67,8 @@
         .btn-success:hover { background: #0a5c32; transform: translateY(-1px); }
         .btn-outline { background: white; border: 1px solid #ddd; color: #666; }
         .btn-outline:hover { background: #f5f5f5; }
+        .btn-warning { background: #d97706; color: white; }
+        .btn-warning:hover { background: #b45309; transform: translateY(-1px); }
         
         .search-bar { display: flex; gap: 10px; background: white; padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; border: 1px solid #e9edf2; }
         .search-group { display: flex; flex-direction: column; gap: 3px; }
@@ -84,6 +86,8 @@
         .stock-out { color: #c0392b; font-weight: bold; }
         .stock-normal { color: #0d7a42; }
         .profit-positive { color: #0d7a42; font-weight: 600; }
+        .status-ordered { color: #1a73e8; font-weight: 600; }
+        .status-shipped { color: #0d7a42; font-weight: 600; }
         .editable { cursor: pointer; }
         .editable:hover { background: #e8f0fe; border-radius: 4px; }
         .action-btn { cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: 0.2s; }
@@ -100,7 +104,7 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 1000; padding: 20px; }
-        .modal-content { background: white; border-radius: 20px; padding: 28px; width: 100%; max-width: 540px; max-height: 90vh; overflow-y: auto; }
+        .modal-content { background: white; border-radius: 20px; padding: 28px; width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; }
         .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; }
         .modal-close { cursor: pointer; font-size: 22px; color: #999; background: none; border: none; }
         .modal-close:hover { color: #333; }
@@ -207,13 +211,13 @@
         <!-- 基础统计卡片 -->
         <div class="stats-grid" id="baseStats">
             <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-number" id="totalCount">-</div><div class="stat-label">总商品种类</div></div>
-            <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-number" id="totalStock">-</div><div class="stat-label">总库存数量</div></div>
+            <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-number" id="totalStock">-</div><div class="stat-label">总库存/订单数</div></div>
             <div class="stat-card"><div class="stat-icon">⚠️</div><div class="stat-number" id="lowStockCount">-</div><div class="stat-label">库存不足 (≤5)</div></div>
-            <div class="stat-card"><div class="stat-icon">❌</div><div class="stat-number" id="outStockCount">-</div><div class="stat-label">缺货商品 (=0)</div></div>
+            <div class="stat-card"><div class="stat-icon">❌</div><div class="stat-number" id="outStockCount">-</div><div class="stat-label">缺货/未发货</div></div>
         </div>
         
         <!-- 金额统计 -->
-        <div class="value-stats">
+        <div class="value-stats" id="valueStats">
             <div class="value-card"><div class="value-icon">💰</div><div class="value-number" id="totalStockValue">¥0</div><div class="value-label">在库总金额</div><div class="value-desc">仕入れ価格 × 残り在庫</div></div>
             <div class="value-card"><div class="value-icon">📥</div><div class="value-number" id="totalPurchaseValue">¥0</div><div class="value-label">进货总金额</div><div class="value-desc">仕入れ価格 × 入庫数量</div></div>
             <div class="value-card"><div class="value-icon">📦</div><div class="value-number" id="totalQuantity">0</div><div class="value-label">总库存数量</div><div class="value-desc">残り在庫の总和</div></div>
@@ -231,7 +235,7 @@
                 <div class="panel-content" id="priceRangeStats"><div style="text-align:center;padding:20px;color:#999;font-size:13px;">加载中...</div></div>
             </div>
             <div class="panel">
-                <div class="panel-title"><i class="fas fa-chart-line"></i> 库存状态分析</div>
+                <div class="panel-title"><i class="fas fa-chart-line"></i> 库存/订单状态分析</div>
                 <div class="panel-content" id="stockStatusStats"><div style="text-align:center;padding:20px;color:#999;font-size:13px;">加载中...</div></div>
             </div>
         </div>
@@ -250,7 +254,7 @@
         <div class="search-bar">
             <div class="search-group"><label>🔍 商品搜索</label><input type="text" id="searchKeyword" placeholder="商品名 / JAN码" onkeyup="if(event.key==='Enter') searchData()"></div>
             <div class="search-group"><label>🏷️ 品牌</label><select id="filterBrand" onchange="searchData()"><option value="">全部</option></select></div>
-            <div class="search-group"><label>📊 库存状态</label><select id="filterStock" onchange="searchData()"><option value="">全部</option><option value="low">库存不足 (≤5)</option><option value="out">缺货 (≤0)</option><option value="normal">库存充足</option></select></div>
+            <div class="search-group"><label>📊 状态筛选</label><select id="filterStock" onchange="searchData()"><option value="">全部</option><option value="low">库存不足/少量</option><option value="out">缺货/未发货</option><option value="normal">库存充足/已发货</option></select></div>
             <button class="btn btn-primary" onclick="searchData()"><i class="fas fa-search"></i> 搜索</button>
             <button class="btn btn-outline" onclick="clearSearch()"><i class="fas fa-undo"></i> 重置</button>
         </div>
@@ -272,31 +276,8 @@
                 <span id="modalTitle">新增商品</span>
                 <button class="modal-close" onclick="closeModal()">&times;</button>
             </div>
-            <div class="form-group"><label>JAN CODE <span style="color:red">*</span></label><input type="text" id="editJan" placeholder="请输入JAN码"></div>
-            <div class="form-group"><label>商品名</label><input type="text" id="editName" placeholder="请输入商品名"></div>
-            <div class="form-row">
-                <div class="form-group"><label>品牌/メーカー</label><input type="text" id="editMaker" placeholder="品牌"></div>
-                <div class="form-group"><label>仕入れ価格（個/税抜）</label><input type="text" id="editPrice" placeholder="进货价格" value="0"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>仕入先</label><input type="text" id="editSupplier" placeholder="仕入先"></div>
-                <div class="form-group"><label>员工群价格税込</label><input type="text" id="editEmployeePrice" placeholder="员工群价格" value="0"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>入庫数量</label><input type="number" id="editQty" placeholder="入库数量" value="0"></div>
-                <div class="form-group"><label>残り在庫</label><input type="number" id="editStock" placeholder="当前库存" value="0"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>単位</label><input type="text" id="editUnit" placeholder="個/BOX等"></div>
-                <div class="form-group"><label>位置</label><input type="text" id="editLocation" placeholder="仓库位置"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>编号</label><input type="text" id="editCode" placeholder="编号"></div>
-                <div class="form-group"><label>入库日</label><input type="text" id="editDate" placeholder="入库日"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>售出</label><input type="number" id="editSold" placeholder="售出数量" value="0"></div>
-                <div class="form-group"><label>備考欄</label><input type="text" id="editNote" placeholder="备注"></div>
+            <div id="modalFields">
+                <!-- 动态根据当前表生成 -->
             </div>
             <div class="modal-buttons">
                 <button class="btn btn-outline" onclick="closeModal()">取消</button>
@@ -313,8 +294,8 @@
             PREORDER: '预售'
         };
         
-        // 新列名（按顺序）
-        const COLUMN_NAMES = [
+        // ===== 在庫表的列定义 =====
+        const INSTOCK_COLUMNS = [
             '仕入先',
             '员工群价格税込',
             'メーカー',
@@ -330,6 +311,45 @@
             '備考欄',
             '售出'
         ];
+        
+        // ===== 预售表的列定义 =====
+        const PREORDER_COLUMNS = [
+            '楽天-予約商品登録リスト：案内',
+            '販売時期',
+            '締切日',
+            '発売予定日',
+            'メーカー',
+            'JAN',
+            '仕入価格（個/税抜）',
+            '販売価格（個/税抜）',
+            '商品名',
+            '注文個数',
+            '顧客名',
+            '最低発注単位',
+            '発注状況',
+            '入力担当者',
+            '出荷状況'
+        ];
+        
+        // 显示列映射（用于表格展示）
+        const DISPLAY_COLS = {
+            '在庫': [
+                'JAN CODE', '商品名', 'メーカー', '仕入れ価格（個/税抜）',
+                '入庫数量', '残り在庫', '仕入先', '员工群价格税込',
+                '単位', '位置', '编号', '入库日', '售出', '備考欄'
+            ],
+            '预售': [
+                'JAN', '商品名', 'メーカー', '仕入価格（個/税抜）',
+                '販売価格（個/税抜）', '注文個数', '顧客名', '最低発注単位',
+                '発注状況', '入力担当者', '出荷状況', '販売時期', '締切日', '発売予定日'
+            ]
+        };
+        
+        // 搜索列（用于关键字搜索）
+        const SEARCH_COLS = {
+            '在庫': ['商品名', 'JAN CODE', 'メーカー'],
+            '预售': ['商品名', 'JAN', 'メーカー', '顧客名']
+        };
         
         let currentSheet = SHEET_NAMES.INSTOCK;
         let stockData = [];
@@ -357,28 +377,6 @@
             }, 2500);
         }
         
-        function getStockClass(qty) {
-            if (qty <= 0) return 'stock-out';
-            if (qty <= 5) return 'stock-low';
-            return 'stock-normal';
-        }
-        
-        function getStockLabel(qty) {
-            if (qty <= 0) return '❌ 缺货';
-            if (qty <= 5) return '⚠️ 不足';
-            return '✅ 充足';
-        }
-        
-        function getSheetDisplayName(sheet) {
-            return sheet === SHEET_NAMES.INSTOCK ? '在庫' : '预售';
-        }
-        
-        function getSheetTag(sheet) {
-            return sheet === SHEET_NAMES.INSTOCK ? 
-                '<span class="sheet-tag instock">📦 在庫</span>' : 
-                '<span class="sheet-tag preorder">🎯 预售</span>';
-        }
-        
         function getColIndex(colName) {
             return currentHeaders.indexOf(colName);
         }
@@ -394,6 +392,28 @@
             return parseFloat(String(val).replace(/[¥,]/g, '')) || 0;
         }
         
+        function getSheetDisplayName(sheet) {
+            return sheet === SHEET_NAMES.INSTOCK ? '在庫' : '预售';
+        }
+        
+        function getSheetTag(sheet) {
+            return sheet === SHEET_NAMES.INSTOCK ? 
+                '<span class="sheet-tag instock">📦 在庫</span>' : 
+                '<span class="sheet-tag preorder">🎯 预售</span>';
+        }
+        
+        function getColumns() {
+            return currentSheet === SHEET_NAMES.INSTOCK ? INSTOCK_COLUMNS : PREORDER_COLUMNS;
+        }
+        
+        function getDisplayCols() {
+            return DISPLAY_COLS[currentSheet] || [];
+        }
+        
+        function getSearchCols() {
+            return SEARCH_COLS[currentSheet] || [];
+        }
+        
         // ========== 标签页切换 ==========
         function switchTab(sheet) {
             currentSheet = sheet;
@@ -403,7 +423,43 @@
             });
             
             document.getElementById('currentSheetLabel').innerText = getSheetDisplayName(sheet);
+            
+            // 更新统计卡片的标签
+            updateStatsLabels();
+            
             refreshData();
+        }
+        
+        function updateStatsLabels() {
+            const isInstock = currentSheet === SHEET_NAMES.INSTOCK;
+            document.querySelector('#baseStats .stat-card:nth-child(2) .stat-label').innerText = 
+                isInstock ? '总库存数量' : '总订单数';
+            document.querySelector('#baseStats .stat-card:nth-child(3) .stat-label').innerText = 
+                isInstock ? '库存不足 (≤5)' : '库存不足/少量';
+            document.querySelector('#baseStats .stat-card:nth-child(4) .stat-label').innerText = 
+                isInstock ? '缺货商品 (=0)' : '未发货订单';
+            
+            // 更新价值统计标签
+            const cards = document.querySelectorAll('#valueStats .value-card');
+            if (isInstock) {
+                cards[0].querySelector('.value-label').innerText = '在库总金额';
+                cards[0].querySelector('.value-desc').innerText = '仕入れ価格 × 残り在庫';
+                cards[1].querySelector('.value-label').innerText = '进货总金额';
+                cards[1].querySelector('.value-desc').innerText = '仕入れ価格 × 入庫数量';
+                cards[2].querySelector('.value-label').innerText = '总库存数量';
+                cards[2].querySelector('.value-desc').innerText = '残り在庫の总和';
+                cards[3].querySelector('.value-label').innerText = '库存率';
+                cards[3].querySelector('.value-desc').innerText = '剩余库存 ÷ 总入库';
+            } else {
+                cards[0].querySelector('.value-label').innerText = '订单总金额';
+                cards[0].querySelector('.value-desc').innerText = '仕入価格 × 注文個数';
+                cards[1].querySelector('.value-label').innerText = '销售总金额';
+                cards[1].querySelector('.value-desc').innerText = '販売価格 × 注文個数';
+                cards[2].querySelector('.value-label').innerText = '总订单数';
+                cards[2].querySelector('.value-desc').innerText = '注文個数の总和';
+                cards[3].querySelector('.value-label').innerText = '订单完成率';
+                cards[3].querySelector('.value-desc').innerText = '已发货 ÷ 总订单';
+            }
         }
         
         // ========== 加载统计数据 ==========
@@ -462,57 +518,64 @@
         
         // ========== 计算面板统计 ==========
         function calculatePanelStats(data) {
-            const priceIdx = getColIndex('仕入れ価格（個/税抜）');
-            const stockIdx = getColIndex('残り在庫');
-            const makerIdx = getColIndex('メーカー');
+            const isInstock = currentSheet === SHEET_NAMES.INSTOCK;
             
-            let totalStockValue = 0;
+            // 价格列
+            const priceCol = isInstock ? '仕入れ価格（個/税抜）' : '仕入価格（個/税抜）';
+            const stockCol = isInstock ? '残り在庫' : '注文個数';
+            const makerCol = 'メーカー';
+            
+            const priceIdx = getColIndex(priceCol);
+            const stockIdx = getColIndex(stockCol);
+            const makerIdx = getColIndex(makerCol);
+            
+            let totalValue = 0;
             let brandMap = new Map();
             let priceRangeMap = new Map([
                 ['0-500', 0], ['500-1000', 0], ['1000-2000', 0],
                 ['2000-5000', 0], ['5000以上', 0]
             ]);
-            let lowStockCount = 0;
-            let outStockCount = 0;
-            let normalStockCount = 0;
+            let lowCount = 0;
+            let outCount = 0;
+            let normalCount = 0;
             
             data.forEach(row => {
                 let price = 0;
-                let stockQty = 0;
+                let qty = 0;
                 let maker = '';
                 
                 if (priceIdx !== -1 && row[priceIdx]) {
                     price = parseFloat(String(row[priceIdx]).replace(/[¥,]/g, '')) || 0;
                 }
                 if (stockIdx !== -1 && row[stockIdx]) {
-                    stockQty = parseInt(row[stockIdx]) || 0;
+                    qty = parseInt(row[stockIdx]) || 0;
                 }
                 if (makerIdx !== -1 && row[makerIdx]) {
                     maker = row[makerIdx];
                 }
                 
-                const itemValue = price * stockQty;
-                totalStockValue += itemValue;
+                const itemValue = price * qty;
+                totalValue += itemValue;
                 
-                if (stockQty <= 0) {
-                    outStockCount++;
-                } else if (stockQty <= 5) {
-                    lowStockCount++;
+                if (qty <= 0) {
+                    outCount++;
+                } else if (qty <= 5) {
+                    lowCount++;
                 } else {
-                    normalStockCount++;
+                    normalCount++;
                 }
                 
-                if (maker && stockQty > 0) {
+                if (maker && qty > 0) {
                     if (!brandMap.has(maker)) {
                         brandMap.set(maker, { value: 0, qty: 0 });
                     }
                     brandMap.set(maker, {
                         value: brandMap.get(maker).value + itemValue,
-                        qty: brandMap.get(maker).qty + stockQty
+                        qty: brandMap.get(maker).qty + qty
                     });
                 }
                 
-                if (stockQty > 0) {
+                if (qty > 0) {
                     if (price < 500) priceRangeMap.set('0-500', priceRangeMap.get('0-500') + 1);
                     else if (price < 1000) priceRangeMap.set('500-1000', priceRangeMap.get('500-1000') + 1);
                     else if (price < 2000) priceRangeMap.set('1000-2000', priceRangeMap.get('1000-2000') + 1);
@@ -528,7 +591,7 @@
                 brandHtml = '<div style="text-align:center;padding:20px;color:#999;font-size:13px;">暂无品牌数据</div>';
             } else {
                 sortedBrands.slice(0, 15).forEach(([brand, data]) => {
-                    const percent = totalStockValue > 0 ? (data.value / totalStockValue * 100) : 0;
+                    const percent = totalValue > 0 ? (data.value / totalValue * 100) : 0;
                     brandHtml += `<div class="panel-item">
                         <div class="panel-name">${escapeHtml(brand)} (${data.qty}件)</div>
                         <div class="panel-bar-wrap"><div class="progress-bar"><div class="progress-fill" style="width: ${Math.min(percent, 100)}%;"></div></div></div>
@@ -556,16 +619,20 @@
             }
             document.getElementById('priceRangeStats').innerHTML = priceHtml;
             
-            // 库存状态
-            const totalWithStock = normalStockCount + lowStockCount + outStockCount;
-            const stockRate = totalWithStock > 0 ? (normalStockCount / totalWithStock * 100) : 0;
+            // 库存/订单状态
+            const totalWith = normalCount + lowCount + outCount;
+            const rate = totalWith > 0 ? (normalCount / totalWith * 100) : 0;
+            const statusLabel = isInstock ? '库存充足' : '已发货';
+            const lowLabel = isInstock ? '库存不足 (1-5)' : '少量订单';
+            const outLabel = isInstock ? '缺货 (0)' : '未发货';
+            
             document.getElementById('stockStatusStats').innerHTML = `
-                <div class="panel-item"><div class="panel-name">✅ 库存充足 (>5)</div><div class="panel-value">${normalStockCount} 件 (${totalWithStock > 0 ? (normalStockCount/totalWithStock*100).toFixed(1) : 0}%)</div></div>
-                <div class="panel-item"><div class="panel-name">⚠️ 库存不足 (1-5)</div><div class="panel-value">${lowStockCount} 件 (${totalWithStock > 0 ? (lowStockCount/totalWithStock*100).toFixed(1) : 0}%)</div></div>
-                <div class="panel-item"><div class="panel-name">❌ 缺货 (0)</div><div class="panel-value">${outStockCount} 件 (${totalWithStock > 0 ? (outStockCount/totalWithStock*100).toFixed(1) : 0}%)</div></div>
+                <div class="panel-item"><div class="panel-name">✅ ${statusLabel} (>5)</div><div class="panel-value">${normalCount} 件 (${totalWith > 0 ? (normalCount/totalWith*100).toFixed(1) : 0}%)</div></div>
+                <div class="panel-item"><div class="panel-name">⚠️ ${lowLabel}</div><div class="panel-value">${lowCount} 件 (${totalWith > 0 ? (lowCount/totalWith*100).toFixed(1) : 0}%)</div></div>
+                <div class="panel-item"><div class="panel-name">❌ ${outLabel}</div><div class="panel-value">${outCount} 件 (${totalWith > 0 ? (outCount/totalWith*100).toFixed(1) : 0}%)</div></div>
                 <div class="panel-item" style="margin-top:10px;border-top:2px solid #e9edf2;padding-top:12px;">
-                    <div class="panel-name" style="font-weight:700;">📊 库存充足率</div>
-                    <div class="panel-value" style="font-size:16px;">${stockRate.toFixed(1)}%</div>
+                    <div class="panel-name" style="font-weight:700;">📊 ${isInstock ? '库存充足率' : '订单完成率'}</div>
+                    <div class="panel-value" style="font-size:16px;">${rate.toFixed(1)}%</div>
                 </div>
             `;
         }
@@ -578,12 +645,8 @@
                 return;
             }
             
-            // 显示列（新表结构）
-            const displayCols = [
-                'JAN CODE', '商品名', 'メーカー', '仕入れ価格（個/税抜）',
-                '入庫数量', '残り在庫', '仕入先', '员工群价格税込',
-                '単位', '位置', '编号', '入库日', '售出', '備考欄'
-            ];
+            const displayCols = getDisplayCols();
+            const isInstock = currentSheet === SHEET_NAMES.INSTOCK;
             
             const colIndices = {};
             displayCols.forEach(col => {
@@ -591,38 +654,23 @@
                 if (idx !== -1) colIndices[col] = idx;
             });
             
-            // 计算在库金额
-            const hasAmount = headers.includes('在库金额');
-            
             let html = '<table><thead><tr><th style="width:40px;">#</th><th style="width:60px;">操作</th><th>区分</th>';
             displayCols.forEach(col => {
-                if (col === '在库金额' && !hasAmount) return;
                 html += `<th>${col}</th>`;
             });
-            // 添加在库金额列（计算字段）
-            if (!hasAmount) {
-                html += `<th>在库金额</th>`;
-            }
+            // 加一列金额（计算字段）
+            html += `<th>${isInstock ? '在库金额' : '订单金额'}</th>`;
             html += '</tr></thead><tbody>';
             
             data.forEach((row, idx) => {
-                const jan = getCellValue(row, 'JAN CODE');
+                const jan = getCellValue(row, isInstock ? 'JAN CODE' : 'JAN');
                 const name = getCellValue(row, '商品名');
                 const maker = getCellValue(row, 'メーカー');
-                const price = getCellNumber(row, '仕入れ価格（個/税抜）');
-                const inQty = getCellNumber(row, '入庫数量');
-                let stockQty = getCellNumber(row, '残り在庫');
-                const unit = getCellValue(row, '単位');
-                const location = getCellValue(row, '位置');
-                const supplier = getCellValue(row, '仕入先');
-                const empPrice = getCellNumber(row, '员工群价格税込');
-                const code = getCellValue(row, '编号');
-                const date = getCellValue(row, '入库日');
-                const sold = getCellNumber(row, '售出');
-                const note = getCellValue(row, '備考欄');
-                
-                const stockValue = price * stockQty;
-                const stockClass = getStockClass(stockQty);
+                const price = getCellNumber(row, isInstock ? '仕入れ価格（個/税抜）' : '仕入価格（個/税抜）');
+                const qty = getCellNumber(row, isInstock ? '残り在庫' : '注文個数');
+                const stockClass = qty <= 0 ? 'stock-out' : (qty <= 5 ? 'stock-low' : 'stock-normal');
+                const stockLabel = qty <= 0 ? '❌ 缺货' : (qty <= 5 ? '⚠️ 不足' : '✅ 充足');
+                const totalValue = price * qty;
                 
                 html += `<tr>
                     <td>${idx + 1}</td>
@@ -630,28 +678,30 @@
                         <i class="fas fa-edit action-btn edit" onclick="editProduct(${idx})" title="编辑"></i>
                         <i class="fas fa-trash-alt action-btn delete" onclick="deleteProduct(${idx})" title="删除"></i>
                     </td>
-                    <td>${getSheetTag(currentSheet)}</td>
-                    <td class="editable" ondblclick="editCell(${idx}, 'JAN CODE')">${escapeHtml(jan) || '-'}</td>
-                    <td class="editable" ondblclick="editCell(${idx}, '商品名')">${escapeHtml(name) || '-'}</td>
-                    <td class="editable" ondblclick="editCell(${idx}, 'メーカー')">${escapeHtml(maker) || '-'}</td>
-                    <td class="editable" ondblclick="editCell(${idx}, '仕入れ価格（個/税抜）')">¥${price.toLocaleString()}</td>
-                    <td class="editable" ondblclick="editCell(${idx}, '入庫数量')">${inQty}</td>
-                    <td class="${stockClass} editable" ondblclick="editCell(${idx}, '残り在庫')">${stockQty} ${getStockLabel(stockQty)}</td>
-                    <td class="editable" ondblclick="editCell(${idx}, '仕入先')">${escapeHtml(supplier) || '-'}</td>
-                    <td class="editable" ondblclick="editCell(${idx}, '员工群价格税込')">¥${empPrice.toLocaleString()}</td>
-                    <td class="editable" ondblclick="editCell(${idx}, '単位')">${escapeHtml(unit) || '-'}</td>
-                    <td class="editable" ondblclick="editCell(${idx}, '位置')">${escapeHtml(location) || '-'}</td>
-                    <td class="editable" ondblclick="editCell(${idx}, '编号')">${escapeHtml(code) || '-'}</td>
-                    <td class="editable" ondblclick="editCell(${idx}, '入库日')">${escapeHtml(date) || '-'}</td>
-                    <td class="editable" ondblclick="editCell(${idx}, '售出')">${sold}</td>
-                    <td class="editable" ondblclick="editCell(${idx}, '備考欄')">${escapeHtml(note) || '-'}</td>
-                    <td class="profit-positive">¥${stockValue.toLocaleString()}</td>
-                </tr>`;
+                    <td>${getSheetTag(currentSheet)}</td>`;
+                
+                displayCols.forEach(col => {
+                    const val = row[colIndices[col]] || '';
+                    if (col === '残り在庫' || col === '注文個数') {
+                        html += `<td class="${stockClass} editable" ondblclick="editCell(${idx}, '${col}')">${val} ${stockLabel}</td>`;
+                    } else if (col === '仕入れ価格（個/税抜）' || col === '仕入価格（個/税抜）' || col === '販売価格（個/税抜）') {
+                        const num = parseFloat(String(val).replace(/[¥,]/g, '')) || 0;
+                        html += `<td class="editable" ondblclick="editCell(${idx}, '${col}')">¥${num.toLocaleString()}</td>`;
+                    } else if (col === '発注状況' || col === '出荷状況') {
+                        const cls = val === '発注済' ? 'status-ordered' : (val === '出荷済' ? 'status-shipped' : '');
+                        html += `<td class="${cls} editable" ondblclick="editCell(${idx}, '${col}')">${escapeHtml(val) || '-'}</td>`;
+                    } else {
+                        html += `<td class="editable" ondblclick="editCell(${idx}, '${col}')">${escapeHtml(val) || '-'}</td>`;
+                    }
+                });
+                
+                html += `<td class="profit-positive">¥${totalValue.toLocaleString()}</td>`;
+                html += '</tr>';
             });
             
             html += '</tbody></table>';
             html += `<div style="padding:12px 16px; text-align:center; color:#94a3b8; font-size:11px; border-top:1px solid #f0f3f8;">
-                💡 双击单元格可编辑 | 共 ${data.length} 件商品 | 当前表: ${getSheetDisplayName(currentSheet)} | 在庫金額 = 仕入れ価格 × 残り在庫
+                💡 双击单元格可编辑 | 共 ${data.length} 件 | 当前表: ${getSheetDisplayName(currentSheet)}
             </div>`;
             container.innerHTML = html;
         }
@@ -678,16 +728,16 @@
             const brand = document.getElementById('filterBrand').value;
             const stockStatus = document.getElementById('filterStock').value;
             
-            const nameIdx = getColIndex('商品名');
-            const janIdx = getColIndex('JAN CODE');
+            const searchCols = getSearchCols();
             const makerIdx = getColIndex('メーカー');
-            const stockIdx = getColIndex('残り在庫');
+            const stockIdx = getColIndex(currentSheet === SHEET_NAMES.INSTOCK ? '残り在庫' : '注文個数');
             
             if (keyword) {
                 data = data.filter(row => {
-                    const name = (row[nameIdx] || '').toLowerCase();
-                    const jan = (row[janIdx] || '').toLowerCase();
-                    return name.includes(keyword) || jan.includes(keyword);
+                    return searchCols.some(col => {
+                        const idx = getColIndex(col);
+                        return idx !== -1 && (row[idx] || '').toLowerCase().includes(keyword);
+                    });
                 });
             }
             if (brand) {
@@ -746,27 +796,24 @@
             }
         }
         
-        // ========== 编辑商品 ==========
+        // ========== 编辑商品（模态框） ==========
         function editProduct(idx) {
             isEditMode = true;
             editingRow = idx;
             document.getElementById('modalTitle').innerText = '编辑商品 - ' + getSheetDisplayName(currentSheet);
             
-            document.getElementById('editJan').value = getCellValue(stockData[idx], 'JAN CODE');
-            document.getElementById('editName').value = getCellValue(stockData[idx], '商品名');
-            document.getElementById('editMaker').value = getCellValue(stockData[idx], 'メーカー');
-            document.getElementById('editPrice').value = getCellNumber(stockData[idx], '仕入れ価格（個/税抜）');
-            document.getElementById('editSupplier').value = getCellValue(stockData[idx], '仕入先');
-            document.getElementById('editEmployeePrice').value = getCellNumber(stockData[idx], '员工群价格税込');
-            document.getElementById('editQty').value = getCellNumber(stockData[idx], '入庫数量');
-            document.getElementById('editStock').value = getCellNumber(stockData[idx], '残り在庫');
-            document.getElementById('editUnit').value = getCellValue(stockData[idx], '単位');
-            document.getElementById('editLocation').value = getCellValue(stockData[idx], '位置');
-            document.getElementById('editCode').value = getCellValue(stockData[idx], '编号');
-            document.getElementById('editDate').value = getCellValue(stockData[idx], '入库日');
-            document.getElementById('editSold').value = getCellNumber(stockData[idx], '售出');
-            document.getElementById('editNote').value = getCellValue(stockData[idx], '備考欄');
+            const columns = getColumns();
+            const fieldsHtml = columns.map(col => {
+                const val = getCellValue(stockData[idx], col);
+                const isNumber = ['仕入れ価格（個/税抜）', '仕入価格（個/税抜）', '販売価格（個/税抜）', '入庫数量', '残り在庫', '注文個数', '售出'].includes(col);
+                const isLarge = ['商品名', '顧客名', '備考欄'].includes(col);
+                return `<div class="form-group">
+                    <label>${col}</label>
+                    <input type="${isNumber ? 'text' : 'text'}" id="edit_${col.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}" value="${escapeHtml(val)}" placeholder="${col}" ${isLarge ? 'style="width:100%;"' : ''}>
+                </div>`;
+            }).join('');
             
+            document.getElementById('modalFields').innerHTML = fieldsHtml;
             document.getElementById('editModal').style.display = 'flex';
         }
         
@@ -775,20 +822,18 @@
             isEditMode = false;
             editingRow = null;
             document.getElementById('modalTitle').innerText = '新增商品 - ' + getSheetDisplayName(currentSheet);
-            document.getElementById('editJan').value = '';
-            document.getElementById('editName').value = '';
-            document.getElementById('editMaker').value = '';
-            document.getElementById('editPrice').value = '0';
-            document.getElementById('editSupplier').value = '';
-            document.getElementById('editEmployeePrice').value = '0';
-            document.getElementById('editQty').value = '0';
-            document.getElementById('editStock').value = '0';
-            document.getElementById('editUnit').value = '';
-            document.getElementById('editLocation').value = '';
-            document.getElementById('editCode').value = '';
-            document.getElementById('editDate').value = '';
-            document.getElementById('editSold').value = '0';
-            document.getElementById('editNote').value = '';
+            
+            const columns = getColumns();
+            const fieldsHtml = columns.map(col => {
+                const isNumber = ['仕入れ価格（個/税抜）', '仕入価格（個/税抜）', '販売価格（個/税抜）', '入庫数量', '残り在庫', '注文個数', '售出'].includes(col);
+                const isLarge = ['商品名', '顧客名', '備考欄'].includes(col);
+                return `<div class="form-group">
+                    <label>${col}${col === 'JAN CODE' || col === 'JAN' ? ' <span style="color:red">*</span>' : ''}</label>
+                    <input type="${isNumber ? 'text' : 'text'}" id="edit_${col.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}" value="" placeholder="${col}" ${isLarge ? 'style="width:100%;"' : ''}>
+                </div>`;
+            }).join('');
+            
+            document.getElementById('modalFields').innerHTML = fieldsHtml;
             document.getElementById('editModal').style.display = 'flex';
         }
         
@@ -798,49 +843,28 @@
         
         // ========== 保存商品 ==========
         async function saveProduct() {
-            const jan = document.getElementById('editJan').value.trim();
-            if (!jan) { showToast('请输入JAN码', 'error'); return; }
+            const columns = getColumns();
+            const janCol = currentSheet === SHEET_NAMES.INSTOCK ? 'JAN CODE' : 'JAN';
+            const janIdx = getColIndex(janCol);
             
-            // 所有字段列表
-            const fields = [
-                '仕入先',
-                '员工群价格税込',
-                'メーカー',
-                '仕入れ価格（個/税抜）',
-                'JAN CODE',
-                '商品名',
-                '単位',
-                '位置',
-                '编号',
-                '入库日',
-                '入庫数量',
-                '残り在庫',
-                '備考欄',
-                '售出'
-            ];
+            // 收集所有字段值
+            const values = columns.map(col => {
+                const el = document.getElementById(`edit_${col.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}`);
+                return el ? el.value : '';
+            });
             
-            const values = [
-                document.getElementById('editSupplier').value,
-                document.getElementById('editEmployeePrice').value,
-                document.getElementById('editMaker').value,
-                document.getElementById('editPrice').value,
-                document.getElementById('editJan').value,
-                document.getElementById('editName').value,
-                document.getElementById('editUnit').value,
-                document.getElementById('editLocation').value,
-                document.getElementById('editCode').value,
-                document.getElementById('editDate').value,
-                document.getElementById('editQty').value,
-                document.getElementById('editStock').value,
-                document.getElementById('editNote').value,
-                document.getElementById('editSold').value
-            ];
+            // 验证JAN
+            const janVal = values[janIdx] || '';
+            if (!janVal.trim()) {
+                showToast('请输入JAN码', 'error');
+                return;
+            }
             
             if (isEditMode && editingRow !== null) {
-                // 编辑模式：逐列更新
+                // 编辑模式
                 let allSuccess = true;
-                for (let i = 0; i < fields.length; i++) {
-                    const colIdx = getColIndex(fields[i]);
+                for (let i = 0; i < columns.length; i++) {
+                    const colIdx = getColIndex(columns[i]);
                     if (colIdx !== -1) {
                         try {
                             await fetch(`/api/gs-sheet/${FILE_KEY}/cell?sheet_name=${encodeURIComponent(currentSheet)}`, {
@@ -863,10 +887,10 @@
                 return;
             }
             
-            // 新增模式：构建完整行数据
+            // 新增模式
             const newRow = new Array(currentHeaders.length).fill('');
-            for (let i = 0; i < fields.length; i++) {
-                const colIdx = getColIndex(fields[i]);
+            for (let i = 0; i < columns.length; i++) {
+                const colIdx = getColIndex(columns[i]);
                 if (colIdx !== -1) {
                     newRow[colIdx] = values[i];
                 }
@@ -918,6 +942,7 @@
         
         // ========== 初始化 ==========
         async function init() {
+            updateStatsLabels();
             await loadStockStats(SHEET_NAMES.INSTOCK);
             await loadStockStats(SHEET_NAMES.PREORDER);
             refreshData();
