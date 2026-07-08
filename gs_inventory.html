@@ -314,18 +314,18 @@
         
         // ===== 预售表的列定义 =====
         const PREORDER_COLUMNS = [
-            '楽天-予約商品登録リスト：案内',
+            '案内',
             '販売時期',
             '締切日',
             '発売予定日',
             'メーカー',
             'JAN',
-            '仕入価格（個/税抜）',
-            '販売価格（個/税抜）',
+            '仕入価格  （個/税抜）',
+            '販売価格  （個/税抜）',
             '商品名',
             '注文個数',
             '顧客名',
-            '最低発注単位',
+            '最低発注\n単位',
             '発注状況',
             '入力担当者',
             '出荷状況'
@@ -339,8 +339,8 @@
                 '単位', '位置', '编号', '入库日', '售出', '備考欄'
             ],
             '预售': [
-                'JAN', '商品名', 'メーカー', '仕入価格（個/税抜）',
-                '販売価格（個/税抜）', '注文個数', '顧客名', '最低発注単位',
+                'JAN', '商品名', 'メーカー', '仕入価格  （個/税抜）',
+                '販売価格  （個/税抜）', '注文個数', '顧客名', '最低発注\n単位',
                 '発注状況', '入力担当者', '出荷状況', '販売時期', '締切日', '発売予定日'
             ]
         };
@@ -521,7 +521,7 @@
             const isInstock = currentSheet === SHEET_NAMES.INSTOCK;
             
             // 价格列
-            const priceCol = isInstock ? '仕入れ価格（個/税抜）' : '仕入価格（個/税抜）';
+            const priceCol = isInstock ? '仕入れ価格（個/税抜）' : '仕入価格  （個/税抜）';
             const stockCol = isInstock ? '残り在庫' : '注文個数';
             const makerCol = 'メーカー';
             
@@ -666,7 +666,7 @@
                 const jan = getCellValue(row, isInstock ? 'JAN CODE' : 'JAN');
                 const name = getCellValue(row, '商品名');
                 const maker = getCellValue(row, 'メーカー');
-                const price = getCellNumber(row, isInstock ? '仕入れ価格（個/税抜）' : '仕入価格（個/税抜）');
+                const price = getCellNumber(row, isInstock ? '仕入れ価格（個/税抜）' : '仕入価格  （個/税抜）');
                 const qty = getCellNumber(row, isInstock ? '残り在庫' : '注文個数');
                 const stockClass = qty <= 0 ? 'stock-out' : (qty <= 5 ? 'stock-low' : 'stock-normal');
                 const stockLabel = qty <= 0 ? '❌ 缺货' : (qty <= 5 ? '⚠️ 不足' : '✅ 充足');
@@ -684,7 +684,7 @@
                     const val = row[colIndices[col]] || '';
                     if (col === '残り在庫' || col === '注文個数') {
                         html += `<td class="${stockClass} editable" ondblclick="editCell(${idx}, '${col}')">${val} ${stockLabel}</td>`;
-                    } else if (col === '仕入れ価格（個/税抜）' || col === '仕入価格（個/税抜）' || col === '販売価格（個/税抜）') {
+                    } else if (col === '仕入れ価格（個/税抜）' || col === '仕入価格  （個/税抜）' || col === '販売価格  （個/税抜）') {
                         const num = parseFloat(String(val).replace(/[¥,]/g, '')) || 0;
                         html += `<td class="editable" ondblclick="editCell(${idx}, '${col}')">¥${num.toLocaleString()}</td>`;
                     } else if (col === '発注状況' || col === '出荷状況') {
@@ -805,7 +805,7 @@
             const columns = getColumns();
             const fieldsHtml = columns.map(col => {
                 const val = getCellValue(stockData[idx], col);
-                const isNumber = ['仕入れ価格（個/税抜）', '仕入価格（個/税抜）', '販売価格（個/税抜）', '入庫数量', '残り在庫', '注文個数', '售出'].includes(col);
+                const isNumber = ['仕入れ価格（個/税抜）', '仕入価格  （個/税抜）', '販売価格  （個/税抜）', '入庫数量', '残り在庫', '注文個数', '售出'].includes(col);
                 const isLarge = ['商品名', '顧客名', '備考欄'].includes(col);
                 return `<div class="form-group">
                     <label>${col}</label>
@@ -825,7 +825,7 @@
             
             const columns = getColumns();
             const fieldsHtml = columns.map(col => {
-                const isNumber = ['仕入れ価格（個/税抜）', '仕入価格（個/税抜）', '販売価格（個/税抜）', '入庫数量', '残り在庫', '注文個数', '售出'].includes(col);
+                const isNumber = ['仕入れ価格（個/税抜）', '仕入価格  （個/税抜）', '販売価格  （個/税抜）', '入庫数量', '残り在庫', '注文個数', '售出'].includes(col);
                 const isLarge = ['商品名', '顧客名', '備考欄'].includes(col);
                 return `<div class="form-group">
                     <label>${col}${col === 'JAN CODE' || col === 'JAN' ? ' <span style="color:red">*</span>' : ''}</label>
