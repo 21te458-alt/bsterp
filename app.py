@@ -266,6 +266,63 @@ FILE_IDS = {
     'file_b': '1anuXNRZFwerO7Gxw9kvpsxglkphbQ65JEXKSHCsZrrs'
 }
 
+# ===== 🆕 工作表名称映射（前端显示名 → 实际工作表名） =====
+SHEET_NAME_MAP = {
+    '在庫': '在庫',
+    '预售': '楽天-予約商品登録リスト'
+}
+
+# ===== 🆕 工作表列定义（用于前端展示和操作） =====
+SHEET_COLUMNS = {
+    '在庫': [
+        '仕入先',
+        '员工群价格税込',
+        'メーカー',
+        '仕入れ価格（個/税抜）',
+        'JAN CODE',
+        '商品名',
+        '単位',
+        '位置',
+        '编号',
+        '入库日',
+        '入庫数量',
+        '残り在庫',
+        '備考欄',
+        '售出'
+    ],
+    '楽天-予約商品登録リスト': [
+        '案内',
+        '販売時期',
+        '締切日',
+        '発売予定日',
+        'メーカー',
+        'JAN',
+        '仕入価格  （個/税抜）',
+        '販売価格  （個/税抜）',
+        '商品名',
+        '注文個数',
+        '顧客名',
+        '最低発注\n単位',
+        '発注状況',
+        '入力担当者',
+        '出荷状況'
+    ]
+}
+
+# ===== 🆕 各表的列配置（用于统计） =====
+SHEET_STATS_CONFIG = {
+    '在庫': {
+        'price_col': '仕入れ価格（個/税抜）',
+        'stock_col': '残り在庫',
+        'in_qty_col': '入庫数量'
+    },
+    '楽天-予約商品登録リスト': {
+        'price_col': '仕入価格  （個/税抜）',
+        'stock_col': '注文個数',
+        'in_qty_col': None
+    }
+}
+
 # 工作表名称
 ORDER_WORKSHEET_NAME = '销售记录'
 STOCK_WORKSHEET_NAME = '动漫记录'
@@ -365,12 +422,24 @@ def get_worksheet(file_key, sheet_id):
     return sh.get_worksheet_by_id(int(sheet_id))
 
 def get_worksheet_by_name(file_key, sheet_name):
-    """根据工作表名称获取工作表对象"""
+    """
+    根据工作表名称获取工作表对象
+    支持通过 SHEET_NAME_MAP 将前端显示名映射到实际表名
+    """
     try:
         sh = gc.open_by_key(file_key)
+        # 先尝试直接用传入的名称
         return sh.worksheet(sheet_name)
     except gspread.WorksheetNotFound:
-        # 如果找不到，回退到默认的"在庫"
+        # 如果找不到，检查是否在映射表中
+        real_name = SHEET_NAME_MAP.get(sheet_name)
+        if real_name and real_name != sheet_name:
+            try:
+                print(f"🔄 尝试映射: '{sheet_name}' → '{real_name}'")
+                return sh.worksheet(real_name)
+            except gspread.WorksheetNotFound:
+                pass
+        # 最后回退到默认的"在庫"
         print(f"⚠️ 找不到工作表 '{sheet_name}'，回退到 '在庫'")
         return sh.worksheet('在庫')
     except Exception as e:
@@ -431,27 +500,31 @@ def get_gs_stock_stats():
             return jsonify(result)
         
         headers = stock_data[0]
+        sheet_title = stock_ws.title
+        
+        # 🆕 根据工作表获取列配置
+        if sheet_title in SHEET_STATS_CONFIG:
+            config = SHEET_STATS_CONFIG[sheet_title]
+            price_col = config['price_col']
+            stock_col = config['stock_col']
+            in_qty_col = config['in_qty_col']
+        else:
+            # 默认使用"在庫"的配置
+            price_col = '仕入れ価格（個/税抜）'
+            stock_col = '残り在庫'
+            in_qty_col = '入庫数量'
         
         # 查找列索引
-        jan_idx = None
-        name_idx = None
-        maker_idx = None
         price_idx = None
         stock_idx = None
         in_qty_idx = None
         
         for i, h in enumerate(headers):
-            if h == 'JAN CODE':
-                jan_idx = i
-            elif h == '商品名':
-                name_idx = i
-            elif h == 'メーカー':
-                maker_idx = i
-            elif h == '仕入れ価格（個/税抜）':
+            if h == price_col:
                 price_idx = i
-            elif h == '残り在庫':
+            elif h == stock_col:
                 stock_idx = i
-            elif h == '入庫数量':
+            elif in_qty_col and h == in_qty_col:
                 in_qty_idx = i
         
         total_quantity = 0
@@ -480,6 +553,10 @@ def get_gs_stock_stats():
             if in_qty > 0:
                 total_in_qty += in_qty
                 total_purchase_value += price * in_qty
+            elif sheet_title == '楽天-予約商品登録リスト' and stock_qty > 0:
+                # 预售表没有入库数量，使用订单数量作为参考
+                total_in_qty += stock_qty
+                total_purchase_value += price * stock_qty
             
             if stock_qty <= 0:
                 out_stock_count += 1
@@ -535,47 +612,46 @@ def api_get_gs_sheet_data(file_key):
             filtered_row = [row[i] if i < len(row) else '' for i in valid_indices]
             filtered_data.append(filtered_row)
         
-        # 为"在庫"或"预售"表添加"在库金额"列
+        # 🆕 为"在庫"或预售表添加金额列
         if file_key == FILE_IDS['file_b']:
             sheet_title = worksheet.title
-            if sheet_title in ['在庫', '预售']:
-                price_col_idx = None
-                stock_col_idx = None
-                for i, h in enumerate(filtered_headers):
-                    if h == '仕入れ価格（個/税抜）':
-                        price_col_idx = i
-                    elif h == '残り在庫':
-                        stock_col_idx = i
-                
-                if price_col_idx is not None and stock_col_idx is not None:
-                    sold_col_idx = None
+            # 检查是否是需要添加金额列的表
+            if sheet_title in ['在庫', '楽天-予約商品登録リスト']:
+                # 获取对应的列配置
+                config = SHEET_STATS_CONFIG.get(sheet_title)
+                if config:
+                    price_col = config['price_col']
+                    stock_col = config['stock_col']
+                    
+                    price_col_idx = None
+                    stock_col_idx = None
                     for i, h in enumerate(filtered_headers):
-                        if h == '售出':
-                            sold_col_idx = i
-                            break
+                        if h == price_col:
+                            price_col_idx = i
+                        elif h == stock_col:
+                            stock_col_idx = i
                     
-                    if sold_col_idx is not None:
-                        insert_position = sold_col_idx + 1
-                    else:
+                    if price_col_idx is not None and stock_col_idx is not None:
+                        # 在数量列后面插入金额列
                         insert_position = stock_col_idx + 1
-                    
-                    filtered_headers.insert(insert_position, '在库金额')
-                    
-                    for row in filtered_data:
-                        price_str = row[price_col_idx] if price_col_idx < len(row) else '0'
-                        stock_str = row[stock_col_idx] if stock_col_idx < len(row) else '0'
+                        filtered_headers.insert(insert_position, '金额')
                         
-                        price_val = parse_leading_number(price_str) if price_str else 0
-                        stock_qty = parse_leading_number(stock_str, as_int=True) if stock_str else 0
-                        
-                        amount = price_val * stock_qty
-                        row.insert(insert_position, f'¥{amount:,.0f}' if amount > 0 else '¥0')
+                        for row in filtered_data:
+                            price_str = row[price_col_idx] if price_col_idx < len(row) else '0'
+                            stock_str = row[stock_col_idx] if stock_col_idx < len(row) else '0'
+                            
+                            price_val = parse_leading_number(price_str) if price_str else 0
+                            stock_qty = parse_leading_number(stock_str, as_int=True) if stock_str else 0
+                            
+                            amount = price_val * stock_qty
+                            row.insert(insert_position, f'¥{amount:,.0f}' if amount > 0 else '¥0')
         
         result = {
             'success': True,
             'headers': filtered_headers,
             'data': filtered_data,
-            'total': len(filtered_data)
+            'total': len(filtered_data),
+            'sheet_name': worksheet.title
         }
         gs_cache.set(cache_key, result)
         return jsonify(result)
