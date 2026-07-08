@@ -18,6 +18,29 @@ import pandas as pd
 import io
 import re
 
+def parse_leading_number(raw, as_int=False):
+    """从单元格文本中提取开头的数字，行为与前端 JS 的 parseFloat 保持一致。
+
+    例如 "358*8=2864" -> 358（不会像旧的 re.sub(r'[^\\d.-]','') 那样把
+    358、8、2864 三段数字拼接成 35882864）。
+    "¥1,932" -> 1932，"5P" -> 5，空值/无法识别 -> 0。
+    """
+    if raw is None:
+        return 0
+    s = str(raw).strip()
+    if not s:
+        return 0
+    # 去掉数字之间的千分位逗号，如 "1,932" -> "1932"
+    s = re.sub(r'(?<=\d),(?=\d)', '', s)
+    m = re.match(r'^[^\d\-]*(-?\d+(?:\.\d+)?)', s)
+    if not m:
+        return 0
+    try:
+        val = float(m.group(1))
+        return int(val) if as_int else val
+    except (TypeError, ValueError):
+        return 0
+
 # ===== 加载环境变量 =====
 load_dotenv()
 
@@ -441,24 +464,15 @@ def get_gs_stock_stats():
         for row in stock_data[1:]:
             price = 0
             if price_idx is not None and price_idx < len(row) and row[price_idx]:
-                try:
-                    price = float(re.sub(r'[^\d.-]', '', str(row[price_idx])))
-                except:
-                    price = 0
+                price = parse_leading_number(row[price_idx])
             
             stock_qty = 0
             if stock_idx is not None and stock_idx < len(row) and row[stock_idx]:
-                try:
-                    stock_qty = int(re.sub(r'[^\d]', '', str(row[stock_idx])))
-                except:
-                    stock_qty = 0
+                stock_qty = parse_leading_number(row[stock_idx], as_int=True)
             
             in_qty = 0
             if in_qty_idx is not None and in_qty_idx < len(row) and row[in_qty_idx]:
-                try:
-                    in_qty = int(re.sub(r'[^\d]', '', str(row[in_qty_idx])))
-                except:
-                    in_qty = 0
+                in_qty = parse_leading_number(row[in_qty_idx], as_int=True)
             
             total_quantity += stock_qty
             total_value += price * stock_qty
@@ -551,14 +565,8 @@ def api_get_gs_sheet_data(file_key):
                         price_str = row[price_col_idx] if price_col_idx < len(row) else '0'
                         stock_str = row[stock_col_idx] if stock_col_idx < len(row) else '0'
                         
-                        try:
-                            price_val = float(re.sub(r'[^\d.-]', '', str(price_str))) if price_str else 0
-                        except:
-                            price_val = 0
-                        try:
-                            stock_qty = int(re.sub(r'[^\d]', '', str(stock_str))) if stock_str else 0
-                        except:
-                            stock_qty = 0
+                        price_val = parse_leading_number(price_str) if price_str else 0
+                        stock_qty = parse_leading_number(stock_str, as_int=True) if stock_str else 0
                         
                         amount = price_val * stock_qty
                         row.insert(insert_position, f'¥{amount:,.0f}' if amount > 0 else '¥0')
